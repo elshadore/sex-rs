@@ -2,22 +2,22 @@ use sex::{Atom, FromSex, Sex, parse_atom};
 
 #[derive(Debug, Sex)]
 struct Point {
-    x: i32,
-    y: i32,
+    x: i64,
+    y: i64,
 }
 
 #[derive(Debug, Sex)]
 enum Shape {
     #[sex(tag = "circle")]
-    Circle(i32),
+    Circle(i64),
     #[sex(tag = "rect")]
     Rect {
-        width: i32,
-        height: i32,
+        width: i64,
+        height: i64,
         #[sex(keyword, default = 0)]
-        x: i32,
+        x: i64,
         #[sex(keyword, default = 0)]
-        y: i32,
+        y: i64,
     },
 }
 

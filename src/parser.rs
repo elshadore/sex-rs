@@ -329,13 +329,13 @@ impl<R: BufRead> Parser<R> {
         }
 
         if has_dot {
-            let n: f32 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
+            let n: f64 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
                 pos: start,
                 value: buf.clone(),
             })?;
             Ok(Atom::Number(Number::Float(n)))
         } else {
-            let n: i32 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
+            let n: i64 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
                 pos: start,
                 value: buf.clone(),
             })?;

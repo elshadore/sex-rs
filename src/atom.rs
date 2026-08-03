@@ -38,6 +38,10 @@ pub enum SexError {
         variant: String,
         expected: Vec<String>,
     },
+    Overflow {
+        expected: AtomTy,
+        value: String,
+    },
     ExpectedAtom,
     ExpectedFinished,
 }
@@ -56,6 +60,9 @@ impl fmt::Display for SexError {
                     variant, expected
                 )
             }
+            SexError::Overflow { expected, value } => {
+                write!(f, "overflow: value '{}' does not fit in {}", value, expected)
+            }
             SexError::ExpectedAtom => write!(f, "expected atom, reached end of input"),
             SexError::ExpectedFinished => {
                 write!(f, "expected end of input, but more atoms remain")
@@ -68,8 +75,8 @@ impl std::error::Error for SexError {}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Number {
-    Integer(i32),
-    Float(f32),
+    Integer(i64),
+    Float(f64),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -201,28 +208,28 @@ impl Atom {
         })
     }
 
-    pub fn as_integer(&self) -> Option<i32> {
+    pub fn as_integer(&self) -> Option<i64> {
         match self {
             Atom::Number(Number::Integer(n)) => Some(*n),
             _ => None,
         }
     }
 
-    pub fn try_as_integer(&self) -> Result<i32, SexError> {
+    pub fn try_as_integer(&self) -> Result<i64, SexError> {
         self.as_integer().ok_or_else(|| SexError::TypeError {
             expected: AtomTy::Integer,
             found: self.clone(),
         })
     }
 
-    pub fn as_float(&self) -> Option<f32> {
+    pub fn as_float(&self) -> Option<f64> {
         match self {
             Atom::Number(Number::Float(n)) => Some(*n),
             _ => None,
         }
     }
 
-    pub fn try_as_float(&self) -> Result<f32, SexError> {
+    pub fn try_as_float(&self) -> Result<f64, SexError> {
         self.as_float().ok_or_else(|| SexError::TypeError {
             expected: AtomTy::Float,
             found: self.clone(),
@@ -260,7 +267,7 @@ impl FromSex for String {
     }
 }
 
-impl FromSex for i32 {
+impl FromSex for i64 {
     fn from_sex(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::Number(Number::Integer(n)) => Ok(*n),
@@ -272,10 +279,57 @@ impl FromSex for i32 {
     }
 }
 
-impl FromSex for f32 {
+macro_rules! template_impl_from_sex_int {
+    ($($t:ty),* $(,)?) => {
+        $(
+            impl FromSex for $t {
+                fn from_sex(atom: &Atom) -> Result<Self, SexError> {
+                    match atom {
+                        Atom::Number(Number::Integer(n)) => {
+                            <$t>::try_from(*n).map_err(|_| SexError::Overflow {
+                                expected: AtomTy::Integer,
+                                value: n.to_string(),
+                            })
+                        }
+                        _ => Err(SexError::TypeError {
+                            expected: AtomTy::Integer,
+                            found: atom.clone(),
+                        }),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+template_impl_from_sex_int!(i8, i16, i32, isize, u8, u16, u32, u64, usize);
+
+impl FromSex for f64 {
     fn from_sex(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::Number(Number::Float(n)) => Ok(*n),
+            Atom::Number(Number::Integer(n)) => Ok(*n as f64),
+            _ => Err(SexError::TypeError {
+                expected: AtomTy::Float,
+                found: atom.clone(),
+            }),
+        }
+    }
+}
+
+impl FromSex for f32 {
+    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
+        match atom {
+            Atom::Number(Number::Float(n)) => {
+                if (*n).is_nan() || (*n).abs() > f32::MAX as f64 {
+                    Err(SexError::Overflow {
+                        expected: AtomTy::Float,
+                        value: n.to_string(),
+                    })
+                } else {
+                    Ok(*n as f32)
+                }
+            }
             Atom::Number(Number::Integer(n)) => Ok(*n as f32),
             _ => Err(SexError::TypeError {
                 expected: AtomTy::Float,
