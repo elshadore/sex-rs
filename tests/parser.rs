@@ -1,109 +1,104 @@
 use sex::{Atom, Number, SexParserError, parse_atom, parse_listed};
 
-fn p1(input: &str) -> Atom {
-    parse_listed(input).unwrap().remove(0)
-}
-
-
 #[test]
 fn parse_bare_symbol() {
-    assert_eq!(p1("hello"), Atom::symbol("hello"));
+    assert_eq!(parse_atom("hello").unwrap(), Atom::symbol("hello"));
 }
 
 #[test]
 fn parse_symbol_with_hyphen() {
-    assert_eq!(p1("foo-bar"), Atom::symbol("foo-bar"));
+    assert_eq!(parse_atom("foo-bar").unwrap(), Atom::symbol("foo-bar"));
 }
 
 #[test]
 fn parse_symbol_with_underscore() {
-    assert_eq!(p1("foo_bar"), Atom::symbol("foo_bar"));
+    assert_eq!(parse_atom("foo_bar").unwrap(), Atom::symbol("foo_bar"));
 }
 
 #[test]
 fn parse_symbol_with_slash() {
-    assert_eq!(p1("foo/bar"), Atom::symbol("foo/bar"));
+    assert_eq!(parse_atom("foo/bar").unwrap(), Atom::symbol("foo/bar"));
 }
 
 #[test]
 fn parse_symbol_with_dot() {
-    assert_eq!(p1("foo.bar"), Atom::symbol("foo.bar"));
+    assert_eq!(parse_atom("foo.bar").unwrap(), Atom::symbol("foo.bar"));
 }
 
 #[test]
 fn parse_symbol_with_star() {
-    assert_eq!(p1("foo*bar"), Atom::symbol("foo*bar"));
+    assert_eq!(parse_atom("foo*bar").unwrap(), Atom::symbol("foo*bar"));
 }
 
 #[test]
 fn parse_symbol_with_plus() {
-    assert_eq!(p1("foo+bar"), Atom::symbol("foo+bar"));
+    assert_eq!(parse_atom("foo+bar").unwrap(), Atom::symbol("foo+bar"));
 }
 
 #[test]
 fn parse_symbol_with_exclamation() {
-    assert_eq!(p1("foo!"), Atom::symbol("foo!"));
+    assert_eq!(parse_atom("foo!").unwrap(), Atom::symbol("foo!"));
 }
 
 #[test]
 fn parse_symbol_with_question() {
-    assert_eq!(p1("foo?"), Atom::symbol("foo?"));
+    assert_eq!(parse_atom("foo?").unwrap(), Atom::symbol("foo?"));
 }
 
 #[test]
 fn parse_symbol_with_angle_brackets() {
-    assert_eq!(p1("foo<bar>"), Atom::symbol("foo<bar>"));
+    assert_eq!(parse_atom("foo<bar>").unwrap(), Atom::symbol("foo<bar>"));
 }
 
 #[test]
 fn parse_symbol_with_equals() {
-    assert_eq!(p1("foo=bar"), Atom::symbol("foo=bar"));
+    assert_eq!(parse_atom("foo=bar").unwrap(), Atom::symbol("foo=bar"));
 }
 
 #[test]
 fn parse_symbol_with_ampersand() {
-    assert_eq!(p1("foo&bar"), Atom::symbol("foo&bar"));
+    assert_eq!(parse_atom("foo&bar").unwrap(), Atom::symbol("foo&bar"));
 }
 
 #[test]
 fn parse_symbol_with_percent() {
-    assert_eq!(p1("foo%bar"), Atom::symbol("foo%bar"));
+    assert_eq!(parse_atom("foo%bar").unwrap(), Atom::symbol("foo%bar"));
 }
 
 #[test]
 fn parse_symbol_mixed() {
-    let s = p1("a-b/c.d_e+f!?");
+    let s = parse_atom("a-b/c.d_e+f!?").unwrap();
     assert_eq!(s, Atom::symbol("a-b/c.d_e+f!?"));
 }
 
 #[test]
 fn parse_symbol_starting_with_dot() {
-    assert_eq!(p1(".foo"), Atom::symbol(".foo"));
+    assert_eq!(parse_atom(".foo").unwrap(), Atom::symbol(".foo"));
 }
 
 #[test]
 fn parse_symbol_single_dot() {
-    assert_eq!(p1("."), Atom::symbol("."));
+    assert_eq!(parse_atom(".").unwrap(), Atom::symbol("."));
 }
 
 #[test]
 fn parse_symbol_single_hyphen() {
-    assert_eq!(p1("-"), Atom::symbol("-"));
+    assert_eq!(parse_atom("-").unwrap(), Atom::symbol("-"));
 }
 
 #[test]
 fn parse_true_is_a_symbol() {
-    assert_eq!(p1("true"), Atom::symbol("true"));
+    assert_eq!(parse_atom("true").unwrap(), Atom::symbol("true"));
 }
 
 #[test]
 fn parse_t_is_a_symbol() {
-    assert_eq!(p1("t"), Atom::symbol("t"));
+    assert_eq!(parse_atom("t").unwrap(), Atom::symbol("t"));
 }
 
 #[test]
 fn parse_nil() {
-    assert_eq!(p1("nil"), Atom::Nil);
+    assert_eq!(parse_atom("nil").unwrap(), Atom::Nil);
 }
 
 #[test]
@@ -115,23 +110,23 @@ fn parse_nil_in_list() {
 
 #[test]
 fn parse_integer_zero() {
-    assert_eq!(p1("0"), Atom::Number(Number::Integer(0)));
+    assert_eq!(parse_atom("0").unwrap(), Atom::Number(Number::Integer(0)));
 }
 
 #[test]
 fn parse_integer_positive() {
-    assert_eq!(p1("42"), Atom::Number(Number::Integer(42)));
+    assert_eq!(parse_atom("42").unwrap(), Atom::Number(Number::Integer(42)));
 }
 
 #[test]
 fn parse_integer_negative() {
-    assert_eq!(p1("-42"), Atom::Number(Number::Integer(-42)));
+    assert_eq!(parse_atom("-42").unwrap(), Atom::Number(Number::Integer(-42)));
 }
 
 #[test]
 fn parse_integer_max() {
     assert_eq!(
-        p1("9223372036854775807"),
+        parse_atom("9223372036854775807").unwrap(),
         Atom::Number(Number::Integer(9223372036854775807))
     );
 }
@@ -139,35 +134,35 @@ fn parse_integer_max() {
 #[test]
 fn parse_integer_min() {
     assert_eq!(
-        p1("-9223372036854775808"),
+        parse_atom("-9223372036854775808").unwrap(),
         Atom::Number(Number::Integer(-9223372036854775808))
     );
 }
 
 #[test]
 fn parse_negative_sign_not_number() {
-    assert_eq!(p1("-"), Atom::symbol("-"));
+    assert_eq!(parse_atom("-").unwrap(), Atom::symbol("-"));
 }
 
 
 #[test]
 fn parse_float_simple() {
-    assert_eq!(p1("3.14"), Atom::Number(Number::Float(3.14)));
+    assert_eq!(parse_atom("3.14").unwrap(), Atom::Number(Number::Float(3.14)));
 }
 
 #[test]
 fn parse_float_negative() {
-    assert_eq!(p1("-2.5"), Atom::Number(Number::Float(-2.5)));
+    assert_eq!(parse_atom("-2.5").unwrap(), Atom::Number(Number::Float(-2.5)));
 }
 
 #[test]
 fn parse_float_zero() {
-    assert_eq!(p1("0.0"), Atom::Number(Number::Float(0.0)));
+    assert_eq!(parse_atom("0.0").unwrap(), Atom::Number(Number::Float(0.0)));
 }
 
 #[test]
 fn parse_trailing_dot_is_valid_float() {
-    assert_eq!(p1("42."), Atom::Number(Number::Float(42.0)));
+    assert_eq!(parse_atom("42.").unwrap(), Atom::Number(Number::Float(42.0)));
 }
 
 #[test]
@@ -186,54 +181,54 @@ fn parse_number_with_letters_stops_at_letter() {
 
 #[test]
 fn negative_number_vs_symbol() {
-    assert!(p1("-42").is_number());
-    assert!(p1("-").is_symbol());
+    assert!(parse_atom("-42").unwrap().is_number());
+    assert!(parse_atom("-").unwrap().is_symbol());
 }
 
 
 #[test]
 fn parse_string_empty() {
-    assert_eq!(p1(r#""""#), Atom::string(""));
+    assert_eq!(parse_atom(r#""""#).unwrap(), Atom::string(""));
 }
 
 #[test]
 fn parse_string_basic() {
-    assert_eq!(p1(r#""hello""#), Atom::string("hello"));
+    assert_eq!(parse_atom(r#""hello""#).unwrap(), Atom::string("hello"));
 }
 
 #[test]
 fn parse_string_with_escaped_quote() {
-    assert_eq!(p1(r#""say \"hi\"""#), Atom::string("say \"hi\""));
+    assert_eq!(parse_atom(r#""say \"hi\"""#).unwrap(), Atom::string("say \"hi\""));
 }
 
 #[test]
 fn parse_string_with_escaped_backslash() {
-    assert_eq!(p1(r#""a\\b""#), Atom::string("a\\b"));
+    assert_eq!(parse_atom(r#""a\\b""#).unwrap(), Atom::string("a\\b"));
 }
 
 #[test]
 fn parse_string_with_newline() {
-    assert_eq!(p1(r#""a\nb""#), Atom::string("a\nb"));
+    assert_eq!(parse_atom(r#""a\nb""#).unwrap(), Atom::string("a\nb"));
 }
 
 #[test]
 fn parse_string_with_tab() {
-    assert_eq!(p1(r#""a\tb""#), Atom::string("a\tb"));
+    assert_eq!(parse_atom(r#""a\tb""#).unwrap(), Atom::string("a\tb"));
 }
 
 #[test]
 fn parse_string_with_carriage_return() {
-    assert_eq!(p1(r#""a\rb""#), Atom::string("a\rb"));
+    assert_eq!(parse_atom(r#""a\rb""#).unwrap(), Atom::string("a\rb"));
 }
 
 #[test]
 fn parse_string_with_spaces() {
-    assert_eq!(p1(r#""hello world""#), Atom::string("hello world"));
+    assert_eq!(parse_atom(r#""hello world""#).unwrap(), Atom::string("hello world"));
 }
 
 #[test]
 fn strings_are_text() {
-    let s = p1(r#""hello""#);
+    let s = parse_atom(r#""hello""#).unwrap();
     assert!(s.is_text());
     assert!(!s.is_symbol());
     assert!(!s.is_keyword());
@@ -264,12 +259,12 @@ fn parse_invalid_escape() {
 
 #[test]
 fn parse_keyword_basic() {
-    assert_eq!(p1(":foo"), Atom::keyword("foo"));
+    assert_eq!(parse_atom(":foo").unwrap(), Atom::keyword("foo"));
 }
 
 #[test]
 fn parse_keyword_with_hyphen() {
-    assert_eq!(p1(":foo-bar"), Atom::keyword("foo-bar"));
+    assert_eq!(parse_atom(":foo-bar").unwrap(), Atom::keyword("foo-bar"));
 }
 
 #[test]
@@ -281,13 +276,13 @@ fn parse_empty_keyword() {
 
 #[test]
 fn parse_empty_list() {
-    assert_eq!(p1("()"), Atom::List(vec![]));
+    assert_eq!(parse_atom("()").unwrap(), Atom::List(vec![]));
 }
 
 #[test]
 fn parse_list_one_element() {
     assert_eq!(
-        p1("(42)"),
+        parse_atom("(42)").unwrap(),
         Atom::List(vec![Atom::Number(Number::Integer(42))])
     );
 }
@@ -295,7 +290,7 @@ fn parse_list_one_element() {
 #[test]
 fn parse_list_multiple_elements() {
     assert_eq!(
-        p1("(a b c)"),
+        parse_atom("(a b c)").unwrap(),
         Atom::List(vec![
             Atom::symbol("a"),
             Atom::symbol("b"),
@@ -307,7 +302,7 @@ fn parse_list_multiple_elements() {
 #[test]
 fn parse_nested_list() {
     assert_eq!(
-        p1("(a (b c))"),
+        parse_atom("(a (b c))").unwrap(),
         Atom::List(vec![
             Atom::symbol("a"),
             Atom::List(vec![Atom::symbol("b"), Atom::symbol("c")]),
@@ -317,7 +312,7 @@ fn parse_nested_list() {
 
 #[test]
 fn parse_deeply_nested_list() {
-    let result = p1("((((nil))))");
+    let result = parse_atom("((((nil))))").unwrap();
     assert_eq!(
         result,
         Atom::List(vec![Atom::List(vec![Atom::List(vec![Atom::List(vec![
@@ -341,19 +336,19 @@ fn parse_unterminated_list_empty() {
 
 #[test]
 fn parse_with_leading_whitespace() {
-    assert_eq!(p1("  42"), Atom::Number(Number::Integer(42)));
+    assert_eq!(parse_atom("  42").unwrap(), Atom::Number(Number::Integer(42)));
 }
 
 #[test]
 fn parse_with_trailing_whitespace() {
-    assert_eq!(p1("42  "), Atom::Number(Number::Integer(42)));
+    assert_eq!(parse_atom("42  ").unwrap(), Atom::Number(Number::Integer(42)));
 }
 
 #[test]
 fn parse_with_tabs_and_newlines() {
     let input = "\n\t(a\n\tb\n)";
     assert_eq!(
-        p1(input),
+        parse_atom(input).unwrap(),
         Atom::List(vec![Atom::symbol("a"), Atom::symbol("b")])
     );
 }
@@ -452,13 +447,13 @@ fn error_unexpected_char() {
 #[test]
 fn parse_mixed_keywords_and_symbols_in_list() {
     let input = "(deftexture foo :src (path \"bar.png\") :x 0 :y 0)";
-    let parsed = p1(input);
+    let parsed = parse_atom(input).unwrap();
     assert!(parsed.is_list());
 }
 
 #[test]
 fn parse_keyword_atom_near_list_boundary() {
-    let parsed = p1("(:tag)");
+    let parsed = parse_atom("(:tag)").unwrap();
     let list = parsed.as_list().unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0], Atom::keyword("tag"));
@@ -466,7 +461,7 @@ fn parse_keyword_atom_near_list_boundary() {
 
 #[test]
 fn nil_in_list() {
-    let atom = p1("(nil)");
+    let atom = parse_atom("(nil)").unwrap();
     let list = atom.as_list().unwrap();
     assert_eq!(list[0], Atom::Nil);
 }
