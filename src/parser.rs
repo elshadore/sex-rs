@@ -208,7 +208,7 @@ impl<R: BufRead> Parser<R> {
     }
 
     fn parse_atom(&mut self) -> Result<Atom, SexParserError> {
-        match self.peek() {
+        match self.at() {
             None => Err(self.unexpected_eof()),
             Some('(') => self.parse_list(),
             Some('"') => self.parse_string(),
@@ -271,7 +271,7 @@ impl<R: BufRead> Parser<R> {
     fn parse_keyword(&mut self) -> Result<Atom, SexParserError> {
         self.inc_expect(':')?;
         let mut name = String::new();
-        while let Some(ch) = self.peek() {
+        while let Some(ch) = self.at() {
             if !is_symbol_char(ch) {
                 break;
             }
@@ -289,7 +289,7 @@ impl<R: BufRead> Parser<R> {
 
     fn parse_symbol(&mut self) -> Result<Atom, SexParserError> {
         let mut name = String::new();
-        while let Some(ch) = self.peek() {
+        while let Some(ch) = self.at() {
             if !is_symbol_char(ch) {
                 break;
             }
@@ -309,13 +309,13 @@ impl<R: BufRead> Parser<R> {
         let start = self.pos;
 
         let mut buf = String::new();
-        if self.peek() == Some('-') {
+        if self.at() == Some('-') {
             buf.push('-');
             self.inc();
         }
 
         let mut has_dot = false;
-        while let Some(ch) = self.peek() {
+        while let Some(ch) = self.at() {
             if ch.is_ascii_digit() {
                 buf.push(ch);
                 self.inc();

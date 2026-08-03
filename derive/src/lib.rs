@@ -89,7 +89,7 @@ fn derive_struct(name: &syn::Ident, fields: &Fields) -> proc_macro2::TokenStream
             keyword_parsers.push(parser);
         } else {
             positional_parsers.push(quote! {
-                let #field_name: #field_ty = sex::FromSex::from_sex(view.try_next()?)?;
+                let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
             });
         }
         
@@ -160,7 +160,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                     } else {
                         quote! {
                             let mut view = sex::AtomView::new(rest);
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_next()?)?;
+                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
                             view.into_keywords()?;
                             Ok(#name::#variant_name(#field_name))
                         }
@@ -172,7 +172,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                         let field_ty = &field.ty;
                         let field_name = format_ident!("field_{}", i);
                         parsers.push(quote! {
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_next()?)?;
+                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
                         });
                         inits.push(quote! { #field_name });
                     }
@@ -217,7 +217,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                         keyword_parsers.push(parser);
                     } else {
                         positional_parsers.push(quote! {
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_next()?)?;
+                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
                         });
                     }
                     
