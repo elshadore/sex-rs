@@ -27,9 +27,17 @@ impl fmt::Display for AtomTy {
 
 #[derive(Debug)]
 pub enum SexError {
-    TypeError { expected: AtomTy, found: Atom },
-    MissingField { name: String },
-    UnknownVariant { variant: String, expected: Vec<String> },
+    TypeError {
+        expected: AtomTy,
+        found: Atom,
+    },
+    MissingField {
+        name: String,
+    },
+    UnknownVariant {
+        variant: String,
+        expected: Vec<String>,
+    },
     ExpectedAtom,
     ExpectedFinished,
 }
@@ -82,7 +90,6 @@ pub type List = Vec<Atom>;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Atom {
     Nil,
-    True,
     Number(Number),
     Text(Text),
     List(List),
@@ -91,18 +98,27 @@ pub enum Atom {
 impl Atom {
     /// Create a symbol atom. This does *not* parse the symbol, so anything goes.
     pub fn symbol(s: impl Into<String>) -> Self {
-        Atom::Text(Text { ty: TextTy::Symbol, contents: s.into() })
+        Atom::Text(Text {
+            ty: TextTy::Symbol,
+            contents: s.into(),
+        })
     }
 
     /// Create a keyword atom. Again this do *not* parse to the keyword format,
     /// you do not need to prefix with the `:` keyword character and anything else goes.
     pub fn keyword(s: impl Into<String>) -> Self {
-        Atom::Text(Text { ty: TextTy::Keyword, contents: s.into() })
+        Atom::Text(Text {
+            ty: TextTy::Keyword,
+            contents: s.into(),
+        })
     }
 
     /// Create a string literal atom.
     pub fn string(s: impl Into<String>) -> Self {
-        Atom::Text(Text { ty: TextTy::String, contents: s.into() })
+        Atom::Text(Text {
+            ty: TextTy::String,
+            contents: s.into(),
+        })
     }
 
     pub fn is_nil(&self) -> bool {
@@ -272,14 +288,8 @@ impl FromSex for f32 {
 impl FromSex for bool {
     fn from_sex(atom: &Atom) -> Result<Self, SexError> {
         match atom {
-            Atom::True => Ok(true),
-            Atom::Text(t) if t.ty == TextTy::Symbol && t.contents == "true" => Ok(true),
-            Atom::Text(t) if t.ty == TextTy::Symbol && t.contents == "false" => Ok(false),
             Atom::Nil => Ok(false),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::Symbol,
-                found: atom.clone(),
-            }),
+            _ => Ok(true),
         }
     }
 }
