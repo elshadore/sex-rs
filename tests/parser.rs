@@ -166,17 +166,48 @@ fn parse_trailing_dot_is_valid_float() {
 }
 
 #[test]
-fn parse_double_dot_stops_at_second_dot() {
-    let atoms = parse_listed("1.2.3").unwrap();
-    assert_eq!(atoms[0], Atom::Number(Number::Float(1.2)));
-    assert_eq!(atoms[1], Atom::symbol(".3"));
+fn parse_double_dot_requires_whitespace() {
+    let err = parse_listed("1.2.3").unwrap_err();
+    assert!(matches!(
+        err,
+        SexParserError::ExpectedWhitespace { ch: '.', .. }
+    ));
 }
 
 #[test]
-fn parse_number_with_letters_stops_at_letter() {
-    let atoms = parse_listed("12a34").unwrap();
-    assert_eq!(atoms[0], Atom::Number(Number::Integer(12)));
-    assert_eq!(atoms[1], Atom::symbol("a34"));
+fn parse_number_with_letters_requires_whitespace() {
+    let err = parse_listed("12a34").unwrap_err();
+    assert!(matches!(
+        err,
+        SexParserError::ExpectedWhitespace { ch: 'a', .. }
+    ));
+}
+
+#[test]
+fn parse_adjacent_strings_requires_whitespace() {
+    let err = parse_listed(r#""a""b""#).unwrap_err();
+    assert!(matches!(
+        err,
+        SexParserError::ExpectedWhitespace { ch: '"', .. }
+    ));
+}
+
+#[test]
+fn parse_symbol_followed_by_list_requires_whitespace() {
+    let err = parse_listed("foo(bar)").unwrap_err();
+    assert!(matches!(
+        err,
+        SexParserError::ExpectedWhitespace { ch: '(', .. }
+    ));
+}
+
+#[test]
+fn parse_adjacent_lists_require_whitespace() {
+    let err = parse_listed("(a)(b)").unwrap_err();
+    assert!(matches!(
+        err,
+        SexParserError::ExpectedWhitespace { ch: '(', .. }
+    ));
 }
 
 #[test]

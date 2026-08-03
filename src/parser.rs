@@ -40,6 +40,7 @@ pub enum SexParserError {
     InvalidEscape { pos: Position, ch: char },
     InvalidNumber { pos: Position, value: String },
     EmptyKeyword { pos: Position },
+    ExpectedWhitespace { pos: Position, ch: char },
 }
 
 impl std::fmt::Display for SexParserError {
@@ -60,6 +61,9 @@ impl std::fmt::Display for SexParserError {
                 write!(f, "{}: invalid number '{}'", pos, value)
             }
             SexParserError::EmptyKeyword { pos } => write!(f, "{}: empty keyword", pos),
+            SexParserError::ExpectedWhitespace { pos, ch } => {
+                write!(f, "{}: expected whitespace before '{}'", pos, ch)
+            }
         }
     }
 }
@@ -173,27 +177,37 @@ impl<R: BufRead> Parser<R> {
         }
     }
 
-    fn skip_whitespace(&mut self) {
+    fn skip_whitespace(&mut self) -> bool {
+        let mut result: bool = false;
         loop {
             match self.at() {
-                None => return,
+                None => return result,
                 Some(ch) if ch.is_whitespace() => {
+                    result = true;
                     self.inc();
                 }
-                _ => return,
+                _ => return result,
             }
         }
     }
 
     fn exec_listed(&mut self) -> Result<List, SexParserError> {
         let mut atoms = Vec::new();
+        let mut whitespace: bool = true;
+        
+        self.skip_whitespace();
+        
         loop {
-            self.skip_whitespace();
             if self.is_finished() {
                 break;
             }
+            if !whitespace {
+                return Err(self.expected_whitespace(self.at().unwrap_or('\0')));
+            }
             atoms.push(self.parse_atom()?);
+            whitespace = self.skip_whitespace();
         }
+        
         Ok(atoms)
     }
 
@@ -224,19 +238,27 @@ impl<R: BufRead> Parser<R> {
 
     fn parse_list(&mut self) -> Result<Atom, SexParserError> {
         self.inc_expect('(')?;
+        
         let mut list: List = Vec::new();
+        let mut first: bool = true;
+        let mut whitespace = self.skip_whitespace();
+        
         loop {
-            self.skip_whitespace();
             match self.at() {
                 None => return Err(self.unterminated_list()),
                 Some(')') => {
                     self.inc();
                     break;
                 }
-                _ => {
+                Some(c) => {
+                    if !first && !whitespace {
+                        return Err(self.expected_whitespace(c))
+                    }
                     list.push(self.parse_atom()?);
                 }
             }
+            whitespace = self.skip_whitespace();
+            first = false;
         }
         Ok(Atom::List(list))
     }
@@ -365,6 +387,13 @@ impl<R: BufRead> Parser<R> {
 
     fn empty_keyword(&self) -> SexParserError {
         SexParserError::EmptyKeyword { pos: self.pos }
+    }
+
+    fn expected_whitespace(&self, ch: char) -> SexParserError {
+        SexParserError::ExpectedWhitespace {
+            pos: self.pos,
+            ch,
+        }
     }
 
     fn expected_single_atom(&self) -> SexParserAtomError {
