@@ -1,4 +1,4 @@
-use sex::{Atom, AtomTy, FromSex, Number, SexError, Text, TextTy};
+use sex::{Atom, AtomTy, FromSex, Number, SexError};
 
 
 #[test]

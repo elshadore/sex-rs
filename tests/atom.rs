@@ -1,4 +1,4 @@
-use sex::{Atom, Number, Position};
+use sex::{Atom, Number};
 
 #[test]
 fn nil_is_nil() {

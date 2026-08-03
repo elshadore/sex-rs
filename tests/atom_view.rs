@@ -1,4 +1,4 @@
-use sex::{Atom, AtomTy, AtomView, FromSex, KeywordView, Number, SexError};
+use sex::{Atom, AtomView, Number, SexError};
 
 #[test]
 fn empty_view() {
