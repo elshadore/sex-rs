@@ -1,6 +1,5 @@
+use crate::atom::{Atom, List, Number, Text, TextTy};
 use std::io::{BufRead, BufReader, Read};
-
-use crate::atom::{Atom, List, Number, SexError, Text, TextTy};
 
 fn read_char(reader: &mut impl BufRead) -> Option<char> {
     loop {
@@ -32,127 +31,165 @@ fn read_char(reader: &mut impl BufRead) -> Option<char> {
     }
 }
 
+#[derive(Debug)]
+pub enum SexParserError {
+    UnexpectedEof { pos: Position },
+    UnexpectedChar { pos: Position, ch: char },
+    UnterminatedList { pos: Position },
+    UnterminatedString { pos: Position },
+    InvalidEscape { pos: Position, ch: char },
+    InvalidNumber { pos: Position, value: String },
+    EmptyKeyword { pos: Position },
+}
+
+impl std::fmt::Display for SexParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SexParserError::UnexpectedEof { pos } => write!(f, "{}: unexpected EOF", pos),
+            SexParserError::UnexpectedChar { pos, ch } => {
+                write!(f, "{}: unexpected character '{}'", pos, ch)
+            }
+            SexParserError::UnterminatedList { pos } => {
+                write!(f, "{}: unterminated list, expected ')'", pos)
+            }
+            SexParserError::UnterminatedString { pos } => write!(f, "{}: unterminated string", pos),
+            SexParserError::InvalidEscape { pos, ch } => {
+                write!(f, "{}: invalid escape sequence '\\{}'", pos, ch)
+            }
+            SexParserError::InvalidNumber { pos, value } => {
+                write!(f, "{}: invalid number '{}'", pos, value)
+            }
+            SexParserError::EmptyKeyword { pos } => write!(f, "{}: empty keyword", pos),
+        }
+    }
+}
+
+impl std::error::Error for SexParserError {}
+
+#[derive(Debug)]
+pub enum SexParserAtomError {
+    Generic(SexParserError),
+    ExpectedSingleAtom { pos: Position },
+}
+
+impl std::fmt::Display for SexParserAtomError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SexParserAtomError::Generic(generic) => generic.fmt(f),
+            SexParserAtomError::ExpectedSingleAtom { pos } => {
+                write!(f, "{}: expected single atom", pos)
+            }
+        }
+    }
+}
+
+impl std::error::Error for SexParserAtomError {}
+
+impl From<SexParserError> for SexParserAtomError {
+    fn from(value: SexParserError) -> Self {
+        Self::Generic(value)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Position {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl Position {
+    pub const fn new(line: usize, col: usize) -> Position {
+        Position { line, col }
+    }
+
+    pub const fn start() -> Position {
+        Position::new(1, 1)
+    }
+
+    pub const fn inc(self, c: char) -> Position {
+        if c == '\n' {
+            Position::new(self.line + 1, 1)
+        } else {
+            Position::new(self.line, self.col + 1)
+        }
+    }
+
+    pub fn inc_mut(&mut self, c: char) {
+        *self = self.inc(c)
+    }
+}
+
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.line, self.col)
+    }
+}
+
 pub struct Parser<R: BufRead> {
     reader: R,
-    line: usize,
-    col: usize,
+    pos: Position,
     buf: [Option<char>; 2],
 }
 
 impl<R: BufRead> Parser<R> {
     pub fn new(reader: R) -> Self {
-        let mut p = Parser {
+        let mut result = Self {
             reader,
-            line: 1,
-            col: 1,
+            pos: Position::start(),
             buf: [None, None],
         };
-        p.refill();
-        p.refill();
-        p
+        result.buf[0] = read_char(&mut result.reader);
+        result.buf[1] = read_char(&mut result.reader);
+        result
     }
 
-    fn refill(&mut self) {
-        self.buf[0] = self.buf[1].take();
-        self.buf[1] = read_char(&mut self.reader);
+    fn is_finished(&self) -> bool {
+        self.buf[0].is_none()
     }
 
-    fn peek(&self) -> Option<char> {
+    fn at(&self) -> Option<char> {
         self.buf[0]
     }
 
-    fn peek_next(&self) -> Option<char> {
+    fn peek(&self) -> Option<char> {
         self.buf[1]
     }
 
-    fn advance(&mut self) -> Option<char> {
+    fn inc(&mut self) -> Option<char> {
         let ch = self.buf[0].take();
-        self.refill();
+        self.buf[0] = self.buf[1].take();
+        self.buf[1] = read_char(&mut self.reader);
         if let Some(c) = ch {
-            if c == '\n' {
-                self.line += 1;
-                self.col = 1;
-            } else {
-                self.col += 1;
-            }
+            self.pos.inc_mut(c);
         }
         ch
     }
 
-    fn is_eof(&self) -> bool {
-        self.buf[0].is_none()
-    }
-
-    fn pos(&self) -> crate::atom::Position {
-        crate::atom::Position {
-            line: self.line,
-            col: self.col,
-        }
-    }
-
-    fn expect_char(&mut self, expected: char) -> Result<(), SexError> {
-        match self.advance() {
+    fn inc_expect(&mut self, expected: char) -> Result<(), SexParserError> {
+        match self.inc() {
             Some(ch) if ch == expected => Ok(()),
             Some(ch) => Err(self.unexpected_char(ch)),
             None => Err(self.unexpected_eof()),
         }
     }
 
-    fn unexpected_eof(&self) -> SexError {
-        SexError::UnexpectedEof { pos: self.pos() }
-    }
-
-    fn unexpected_char(&self, ch: char) -> SexError {
-        SexError::UnexpectedChar {
-            pos: self.pos(),
-            ch,
-        }
-    }
-
-    fn unterminated_list(&self) -> SexError {
-        SexError::UnterminatedList { pos: self.pos() }
-    }
-
-    fn unterminated_string(&self) -> SexError {
-        SexError::UnterminatedString { pos: self.pos() }
-    }
-
-    fn invalid_escape(&self, ch: char) -> SexError {
-        SexError::InvalidEscape {
-            pos: self.pos(),
-            ch,
-        }
-    }
-
-    fn empty_keyword(&self) -> SexError {
-        SexError::EmptyKeyword { pos: self.pos() }
-    }
-
-    fn skip_whitespace_and_comments(&mut self) {
+    fn skip_whitespace(&mut self) {
         loop {
-            match self.peek() {
+            match self.at() {
                 None => return,
                 Some(ch) if ch.is_whitespace() => {
-                    self.advance();
-                }
-                Some(';') => {
-                    while let Some(ch) = self.peek() {
-                        if ch == '\n' {
-                            break;
-                        }
-                        self.advance();
-                    }
+                    self.inc();
                 }
                 _ => return,
             }
         }
     }
 
-    fn parse_all(&mut self) -> Result<Vec<Atom>, SexError> {
+    fn exec_listed(&mut self) -> Result<List, SexParserError> {
         let mut atoms = Vec::new();
         loop {
-            self.skip_whitespace_and_comments();
-            if self.is_eof() {
+            self.skip_whitespace();
+            if self.is_finished() {
                 break;
             }
             atoms.push(self.parse_atom()?);
@@ -160,14 +197,23 @@ impl<R: BufRead> Parser<R> {
         Ok(atoms)
     }
 
-    fn parse_atom(&mut self) -> Result<Atom, SexError> {
-        self.skip_whitespace_and_comments();
+    fn exec_atom(&mut self) -> Result<Atom, SexParserAtomError> {
+        self.skip_whitespace();
+        let result = self.parse_atom()?;
+        self.skip_whitespace();
+        if !self.is_finished() {
+            return Err(self.expected_single_atom());
+        }
+        Ok(result)
+    }
+
+    fn parse_atom(&mut self) -> Result<Atom, SexParserError> {
         match self.peek() {
             None => Err(self.unexpected_eof()),
             Some('(') => self.parse_list(),
             Some('"') => self.parse_string(),
             Some(':') => self.parse_keyword(),
-            Some(ch) if ch == '-' && self.peek_next().map_or(false, |c| c.is_ascii_digit()) => {
+            Some(ch) if ch == '-' && self.peek().map_or(false, |c| c.is_ascii_digit()) => {
                 self.parse_number()
             }
             Some(ch) if ch.is_ascii_digit() => self.parse_number(),
@@ -176,15 +222,15 @@ impl<R: BufRead> Parser<R> {
         }
     }
 
-    fn parse_list(&mut self) -> Result<Atom, SexError> {
-        self.expect_char('(')?;
+    fn parse_list(&mut self) -> Result<Atom, SexParserError> {
+        self.inc_expect('(')?;
         let mut list: List = Vec::new();
         loop {
-            self.skip_whitespace_and_comments();
-            match self.peek() {
+            self.skip_whitespace();
+            match self.at() {
                 None => return Err(self.unterminated_list()),
                 Some(')') => {
-                    self.advance();
+                    self.inc();
                     break;
                 }
                 _ => {
@@ -195,14 +241,14 @@ impl<R: BufRead> Parser<R> {
         Ok(Atom::List(list))
     }
 
-    fn parse_string(&mut self) -> Result<Atom, SexError> {
-        self.expect_char('"')?;
+    fn parse_string(&mut self) -> Result<Atom, SexParserError> {
+        self.inc_expect('"')?;
         let mut s = String::new();
         loop {
-            match self.advance() {
+            match self.inc() {
                 None => return Err(self.unterminated_string()),
                 Some('"') => break,
-                Some('\\') => match self.advance() {
+                Some('\\') => match self.inc() {
                     None => return Err(self.unterminated_string()),
                     Some('"') => s.push('"'),
                     Some('\\') => s.push('\\'),
@@ -216,76 +262,113 @@ impl<R: BufRead> Parser<R> {
                 Some(ch) => s.push(ch),
             }
         }
-        Ok(Atom::Text(Text { ty: TextTy::String, contents: s }))
+        Ok(Atom::Text(Text {
+            ty: TextTy::String,
+            contents: s,
+        }))
     }
 
-    fn parse_keyword(&mut self) -> Result<Atom, SexError> {
-        self.expect_char(':')?;
+    fn parse_keyword(&mut self) -> Result<Atom, SexParserError> {
+        self.inc_expect(':')?;
         let mut name = String::new();
         while let Some(ch) = self.peek() {
             if !is_symbol_char(ch) {
                 break;
             }
             name.push(ch);
-            self.advance();
+            self.inc();
         }
         if name.is_empty() {
             return Err(self.empty_keyword());
         }
-        Ok(Atom::Text(Text { ty: TextTy::Keyword, contents: name }))
+        Ok(Atom::Text(Text {
+            ty: TextTy::Keyword,
+            contents: name,
+        }))
     }
 
-    fn parse_symbol(&mut self) -> Result<Atom, SexError> {
+    fn parse_symbol(&mut self) -> Result<Atom, SexParserError> {
         let mut name = String::new();
         while let Some(ch) = self.peek() {
             if !is_symbol_char(ch) {
                 break;
             }
             name.push(ch);
-            self.advance();
+            self.inc();
         }
         if name == "nil" {
             return Ok(Atom::Nil);
         }
-        if name == "true" || name == "t" {
-            return Ok(Atom::True);
-        }
-        Ok(Atom::Text(Text { ty: TextTy::Symbol, contents: name }))
+        Ok(Atom::Text(Text {
+            ty: TextTy::Symbol,
+            contents: name,
+        }))
     }
 
-    fn parse_number(&mut self) -> Result<Atom, SexError> {
-        let start_pos = self.pos();
+    fn parse_number(&mut self) -> Result<Atom, SexParserError> {
+        let start = self.pos;
+
         let mut buf = String::new();
         if self.peek() == Some('-') {
             buf.push('-');
-            self.advance();
+            self.inc();
         }
+
         let mut has_dot = false;
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
                 buf.push(ch);
-                self.advance();
+                self.inc();
             } else if ch == '.' && !has_dot {
                 has_dot = true;
                 buf.push(ch);
-                self.advance();
+                self.inc();
             } else {
                 break;
             }
         }
+
         if has_dot {
-            let n: f32 = buf.parse().map_err(|_| SexError::InvalidNumber {
-                pos: start_pos,
+            let n: f32 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
+                pos: start,
                 value: buf.clone(),
             })?;
             Ok(Atom::Number(Number::Float(n)))
         } else {
-            let n: i32 = buf.parse().map_err(|_| SexError::InvalidNumber {
-                pos: start_pos,
+            let n: i32 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
+                pos: start,
                 value: buf.clone(),
             })?;
             Ok(Atom::Number(Number::Integer(n)))
         }
+    }
+
+    fn unexpected_eof(&self) -> SexParserError {
+        SexParserError::UnexpectedEof { pos: self.pos }
+    }
+
+    fn unexpected_char(&self, ch: char) -> SexParserError {
+        SexParserError::UnexpectedChar { pos: self.pos, ch }
+    }
+
+    fn unterminated_list(&self) -> SexParserError {
+        SexParserError::UnterminatedList { pos: self.pos }
+    }
+
+    fn unterminated_string(&self) -> SexParserError {
+        SexParserError::UnterminatedString { pos: self.pos }
+    }
+
+    fn invalid_escape(&self, ch: char) -> SexParserError {
+        SexParserError::InvalidEscape { pos: self.pos, ch }
+    }
+
+    fn empty_keyword(&self) -> SexParserError {
+        SexParserError::EmptyKeyword { pos: self.pos }
+    }
+
+    fn expected_single_atom(&self) -> SexParserAtomError {
+        SexParserAtomError::ExpectedSingleAtom { pos: self.pos }
     }
 }
 
@@ -306,15 +389,48 @@ fn is_symbol_char(ch: char) -> bool {
         || ch == '%'
 }
 
-pub fn parse(input: impl AsRef<str>) -> Result<Vec<Atom>, SexError> {
+/// Parses multiple atoms/expressions from a string.
+/// foo             => (foo)
+/// (foo bar baz)   => ((foo bar bar))
+/// (foo bar) (baz) => ((foo bar) (baz))
+///                 => ()
+pub fn parse_listed(input: impl AsRef<str>) -> Result<List, SexParserError> {
     let s = input.as_ref();
     let cursor = std::io::Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor);
-    parser.parse_all()
+    parser.exec_listed()
 }
 
-pub fn parse_reader(reader: impl Read) -> Result<Vec<Atom>, SexError> {
+/// Parses multiple atoms/expressions from a generic reader.
+/// foo             => (foo)
+/// (foo bar baz)   => ((foo bar bar))
+/// (foo bar) (baz) => ((foo bar) (baz))
+///                 => ()
+pub fn parse_listed_reader(reader: impl Read) -> Result<List, SexParserError> {
     let reader = BufReader::new(reader);
     let mut parser = Parser::new(reader);
-    parser.parse_all()
+    parser.exec_listed()
+}
+
+/// Parses a single atom/expression from a string.
+/// foo             => foo
+/// (foo bar baz)   => (foo bar bar)
+/// (foo bar) (baz) => X
+///                 => X
+pub fn parse_atom(input: impl AsRef<str>) -> Result<Atom, SexParserAtomError> {
+    let s = input.as_ref();
+    let cursor = std::io::Cursor::new(s.as_bytes());
+    let mut parser = Parser::new(cursor);
+    parser.exec_atom()
+}
+
+/// Parses a single atom/expression from a generic reader.
+/// foo             => foo
+/// (foo bar baz)   => (foo bar bar)
+/// (foo bar) (baz) => X
+///                 => X
+pub fn parse_atom_reader(reader: impl Read) -> Result<Atom, SexParserAtomError> {
+    let reader = BufReader::new(reader);
+    let mut parser = Parser::new(reader);
+    parser.exec_atom()
 }

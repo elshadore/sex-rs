@@ -2,147 +2,23 @@ use proc_macro::TokenStream;
 use quote::{quote, format_ident};
 use syn::{parse_macro_input, DeriveInput, Data, Fields, Attribute, Lit, Meta, Expr};
 
-/// Derives the [`FromSex`] trait for a struct or enum, enabling deserialization from
-/// S-expression atoms.
+/// Derive macro for declarively parsing sexpression data.
+/// Examples:
 ///
-/// Attribute syntax: `#[sex(...)]` on fields or enum variants.
-///
-///
-/// # Structs
-///
-/// Only named fields are supported.
-///
-/// ## Positional fields (default)
-///
-/// Fields are matched positionally in declaration order:
-///
-/// ```ignore
 /// #[derive(Sex)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
 /// }
 ///
-/// // Input: (10 20)  →  Point { x: 10, y: 20 }
-/// ```
-///
-/// ## Keyword fields
-///
-/// Use `#[sex(keyword)]` to mark a field as keyword-driven. The keyword name defaults to the
-/// field name with underscores replaced by hyphens.
-///
-/// Use `#[sex(keyword = "custom-name")]` to override the keyword.
-///
-/// ```ignore
-/// #[derive(Sex)]
-/// struct Config {
-///     name: String,
-///     #[sex(keyword)]
-///     width: i32,
-///     #[sex(keyword = "hgt")]
-///     height: i32,
-/// }
-///
-/// // Input: ("test" :width 800 :hgt 600)
-/// //   →  Config { name: "test", width: 800, height: 600 }
-/// ```
-///
-/// ## Optional / default fields
-///
-/// Combine with `#[sex(default)]` or `#[sex(default = expr)]` to make a field optional:
-///
-/// ```ignore
-/// #[derive(Sex)]
-/// struct Window {
-///     title: String,
-///     #[sex(keyword, default = 800)]
-///     width: i32,
-///     #[sex(keyword, default = 600)]
-///     height: i32,
-/// }
-///
-/// // Input: ("my window" :height 400)
-/// //   →  Window { title: "my window", width: 800, height: 400 }
-/// ```
-///
-/// `#[sex(default)]` (without an expression) uses `Default::default()` for the field type.
-/// Keyword fields without `#[sex(default)]` are required and will error if missing.
-///
-///
-/// # Enums
-///
-/// The first element of the input list must be a **symbol tag** that identifies which variant
-/// to deserialize. The remaining elements are parsed as the variant's fields.
-///
-/// The tag defaults to the variant name in lowercase with underscores replaced by hyphens.
-/// Override with `#[sex(tag = "custom-tag")]`.
-///
-/// ## Unit variants
-///
-/// ```ignore
-/// #[derive(Sex)]
-/// enum Command {
-///     #[sex(tag = "noop")]
-///     Noop,
-///     #[sex(tag = "quit")]
-///     Quit,
-/// }
-///
-/// // Input: (noop)  →  Command::Noop
-/// ```
-///
-/// ## Tuple variants (single field — primitive vs. complex)
-///
-/// A single tuple field containing a **primitive** type (`i32`, `f32`, `String`, `bool`, etc.)
-/// reads one positional atom:
-///
-/// ```ignore
 /// #[derive(Sex)]
 /// enum Shape {
 ///     #[sex(tag = "circle")]
 ///     Circle(i32),
-/// }
-///
-/// // Input: (circle 5)  →  Shape::Circle(5)
-/// ```
-///
-/// A single tuple field containing a **complex** type (a struct with `FromSex`) reads the
-/// *entire remaining list* as its S-expression body:
-///
-/// ```ignore
-/// #[derive(Sex, PartialEq, Debug)]
-/// struct Point { x: i32, y: i32 }
-///
-/// #[derive(Sex)]
-/// enum Shape {
+/// 
 ///     #[sex(tag = "point")]
-///     Pt(Point),
-/// }
-///
-/// // Input: (point 1 2)  →  Shape::Pt(Point { x: 1, y: 2 })
-/// ```
-///
-/// ## Tuple variants (multiple fields)
-///
-/// Multiple positional atoms, one per field:
-///
-/// ```ignore
-/// #[derive(Sex)]
-/// enum Command {
-///     #[sex(tag = "jump")]
-///     Jump(i32, i32),
-/// }
-///
-/// // Input: (jump 3 4)  →  Command::Jump(3, 4)
-/// ```
-///
-/// ## Named-field variants
-///
-/// Support the same `#[sex(keyword)]` and `#[sex(default)]` attributes as struct fields:
-///
-/// ```ignore
-/// #[derive(Sex, PartialEq, Debug)]
-/// enum Shape {
+///     Point(Point),
+/// 
 ///     #[sex(tag = "rect")]
 ///     Rect {
 ///         width: i32,
@@ -153,23 +29,6 @@ use syn::{parse_macro_input, DeriveInput, Data, Fields, Attribute, Lit, Meta, Ex
 ///         y: i32,
 ///     },
 /// }
-///
-/// // Input: (rect 100 200 :x 10 :y 20)
-/// //   →  Shape::Rect { width: 100, height: 200, x: 10, y: 20 }
-/// ```
-///
-///
-/// # Attribute reference summary
-///
-/// | Attribute | Scope | Description |
-/// |---|---|
-/// | `#[sex(keyword)]` | struct / enum-named field | Parse as keyword-value pair (`:name value`) |
-/// | `#[sex(keyword = "str")]` | struct / enum-named field | Keyword with explicit name |
-/// | `#[sex(default)]` | struct / enum-named field | Optional field, uses `Default::default()` |
-/// | `#[sex(default = expr)]` | struct / enum-named field | Optional field, uses given expression |
-/// | `#[sex(tag = "str")]` | enum variant | Override the symbol tag for dispatch |
-///
-/// See [`FromSex`], [`Atom`], and the `examples/` directory for more.
 #[proc_macro_derive(Sex, attributes(sex))]
 pub fn derive_sex(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
