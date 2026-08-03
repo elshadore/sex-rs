@@ -1,6 +1,5 @@
 use sex::{Atom, AtomTy, KeywordView, Number, SexError};
 
-
 #[test]
 fn keyword_view_empty() {
     let kv = KeywordView::from_slice(&[]).unwrap();
@@ -152,8 +151,8 @@ fn keyword_view_iter() {
 
 #[test]
 fn keyword_view_from_parsed_list() {
-    let atoms = sex::parse_listed("(:x 10 :y 20)").unwrap();
-    let list = atoms[0].as_list().unwrap();
+    let atom = sex::parse_atom("(:x 10 :y 20)").unwrap();
+    let list = atom.as_list().unwrap();
     let kv = KeywordView::from_slice(list).unwrap();
     assert_eq!(kv.required::<i64>("x").unwrap(), 10);
     assert_eq!(kv.required::<i64>("y").unwrap(), 20);

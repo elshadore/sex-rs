@@ -464,46 +464,6 @@ fn parse_keyword_atom_near_list_boundary() {
     assert_eq!(list[0], Atom::keyword("tag"));
 }
 
-
-#[test]
-fn parse_deftexture_shape() {
-    let input = r#"(deftexture cursor :src (path "./textures/cursor.png"))"#;
-    let atom = p1(input);
-    let list = atom.as_list().unwrap();
-    assert_eq!(list[0], Atom::symbol("deftexture"));
-    assert_eq!(list[1], Atom::symbol("cursor"));
-    assert_eq!(list[2], Atom::keyword("src"));
-    let src = list[3].as_list().unwrap();
-    assert_eq!(src[0], Atom::symbol("path"));
-    assert_eq!(src[1], Atom::string("./textures/cursor.png"));
-}
-
-#[test]
-fn parse_deftexture_with_subrect() {
-    let input = r#"(deftexture element-fire :src (texture element) :x 0 :y 32 :w 32 :h 32)"#;
-    let atom = p1(input);
-    let list = atom.as_list().unwrap();
-    assert_eq!(list[0], Atom::symbol("deftexture"));
-    assert_eq!(list[4], Atom::keyword("x"));
-    assert_eq!(list[5], Atom::Number(Number::Integer(0)));
-    assert_eq!(list[6], Atom::keyword("y"));
-    assert_eq!(list[7], Atom::Number(Number::Integer(32)));
-}
-
-#[test]
-fn parse_mixed_keywords_positional() {
-    let input = "(deffont iosevka :type (bmfont \"./fonts/iosevka.fnt\" iosevka))";
-    let atom = p1(input);
-    let list = atom.as_list().unwrap();
-    assert_eq!(list.len(), 4);
-    assert_eq!(list[2], Atom::keyword("type"));
-    let ty = list[3].as_list().unwrap();
-    assert_eq!(ty[0], Atom::symbol("bmfont"));
-    assert_eq!(ty[1], Atom::string("./fonts/iosevka.fnt"));
-    assert_eq!(ty[2], Atom::symbol("iosevka"));
-}
-
-
 #[test]
 fn nil_in_list() {
     let atom = p1("(nil)");

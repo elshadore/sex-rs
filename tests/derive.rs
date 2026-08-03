@@ -219,7 +219,6 @@ fn enum_first_element_not_symbol() {
     assert!(matches!(err, SexError::TypeError { .. }));
 }
 
-
 #[test]
 fn struct_from_non_list() {
     let atom = Atom::symbol("oops");

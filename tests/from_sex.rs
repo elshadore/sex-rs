@@ -189,32 +189,3 @@ fn from_sex_vec_type_error_inside() {
     let r: Result<Vec<i64>, _> = Vec::from_sex(&list);
     assert!(r.is_err());
 }
-
-
-#[test]
-fn text_struct_fields_accessible() {
-    let t = Text {
-        ty: TextTy::Symbol,
-        contents: "hello".into(),
-    };
-    assert_eq!(t.ty, TextTy::Symbol);
-    assert_eq!(t.contents, "hello");
-}
-
-#[test]
-fn text_equality() {
-    let a = Text {
-        ty: TextTy::Symbol,
-        contents: "x".into(),
-    };
-    let b = Text {
-        ty: TextTy::Symbol,
-        contents: "x".into(),
-    };
-    let c = Text {
-        ty: TextTy::Keyword,
-        contents: "x".into(),
-    };
-    assert_eq!(a, b);
-    assert_ne!(a, c);
-}

@@ -1,6 +1,5 @@
 use sex::{Atom, AtomTy, AtomView, FromSex, KeywordView, Number, SexError};
 
-
 #[test]
 fn empty_view() {
     let v = AtomView::new(&[]);

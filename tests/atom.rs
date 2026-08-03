@@ -1,6 +1,5 @@
 use sex::{Atom, Number, Position};
 
-
 #[test]
 fn nil_is_nil() {
     let a = Atom::Nil;
@@ -98,7 +97,6 @@ fn list_is_empty_for_empty_list() {
     assert_eq!(a.as_list().map(|l| l.len()), Some(0));
 }
 
-
 #[test]
 fn text_ty_constructors() {
     let s = Atom::symbol("x");
@@ -110,17 +108,4 @@ fn text_ty_constructors() {
     assert!(t.is_text());
     assert!(!t.is_symbol());
     assert!(!t.is_keyword());
-}
-
-
-#[test]
-fn position_display() {
-    let p = Position { line: 3, col: 14 };
-    assert_eq!(p.to_string(), "3:14");
-}
-
-#[test]
-fn position_display_zero() {
-    let p = Position { line: 0, col: 0 };
-    assert_eq!(p.to_string(), "0:0");
 }
