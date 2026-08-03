@@ -91,7 +91,7 @@ impl<'a> AtomView<'a> {
     }
 
     pub fn enter_list(&mut self) -> Result<AtomView<'a>, SexError> {
-        let atom = self.try_at()?;
+        let atom = self.try_pop()?;
         match atom {
             Atom::List(elements) => Ok(AtomView::new(elements)),
             other => Err(SexError::TypeError {

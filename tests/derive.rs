@@ -62,9 +62,6 @@ enum Command {
     Jump(i64, i64),
 }
 
-// -----------------------------------------------------------------------
-// Derive – Struct positional fields
-// -----------------------------------------------------------------------
 
 #[test]
 fn struct_positional() {
@@ -80,9 +77,6 @@ fn struct_positional_single() {
     assert!(matches!(err, SexError::ExpectedAtom));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Struct keyword fields
-// -----------------------------------------------------------------------
 
 #[test]
 fn struct_keyword() {
@@ -90,7 +84,7 @@ fn struct_keyword() {
     let c: Config = Config::from_sex(&atom).unwrap();
     assert_eq!(c.name, "test");
     assert_eq!(c.width, 800);
-    assert_eq!(c.height, 100); // default
+    assert_eq!(c.height, 100); 
 }
 
 #[test]
@@ -109,9 +103,6 @@ fn struct_keyword_missing_optional() {
     assert!(matches!(err, SexError::MissingField { .. }));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Struct optional keyword
-// -----------------------------------------------------------------------
 
 #[test]
 fn struct_optional_keyword_present() {
@@ -129,9 +120,6 @@ fn struct_optional_keyword_absent() {
     assert_eq!(o.label, None);
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum tuple variant (single field, primitive)
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_tuple_primitive() {
@@ -140,9 +128,6 @@ fn enum_tuple_primitive() {
     assert_eq!(s, Shape::Circle(5));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum tuple variant (single field, complex/composite)
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_tuple_complex() {
@@ -151,9 +136,6 @@ fn enum_tuple_complex() {
     assert_eq!(s, Shape::Pt(Point { x: 1, y: 2 }));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum named variant with positional + keyword fields
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_named_positional_only() {
@@ -191,9 +173,6 @@ fn enum_named_partial_keywords() {
     });
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum unit variant
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_unit_variant() {
@@ -202,9 +181,6 @@ fn enum_unit_variant() {
     assert_eq!(c, Command::Noop);
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum multiple tuple fields
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_tuple_multiple() {
@@ -213,9 +189,6 @@ fn enum_tuple_multiple() {
     assert_eq!(c, Command::Jump(3, 4));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum named variant without positional
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_named_move() {
@@ -224,9 +197,6 @@ fn enum_named_move() {
     assert_eq!(c, Command::Move { dx: 1, dy: 2 });
 }
 
-// -----------------------------------------------------------------------
-// Derive – Enum error cases
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_unknown_variant() {
@@ -249,9 +219,6 @@ fn enum_first_element_not_symbol() {
     assert!(matches!(err, SexError::TypeError { .. }));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Type mismatch error cases
-// -----------------------------------------------------------------------
 
 #[test]
 fn struct_from_non_list() {
@@ -267,9 +234,6 @@ fn enum_from_non_list() {
     assert!(matches!(err, SexError::TypeError { .. }));
 }
 
-// -----------------------------------------------------------------------
-// Derive – Positional-before-keyword strict ordering
-// -----------------------------------------------------------------------
 
 #[test]
 fn enum_rejects_positional_after_keyword() {

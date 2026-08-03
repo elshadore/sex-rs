@@ -4,9 +4,6 @@ fn p1(input: &str) -> Atom {
     parse_listed(input).unwrap().remove(0)
 }
 
-// -----------------------------------------------------------------------
-// Parser – Symbols
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_bare_symbol() {
@@ -115,9 +112,6 @@ fn parse_nil_in_list() {
     assert_eq!(atoms, vec![Atom::List(vec![Atom::Nil])]);
 }
 
-// -----------------------------------------------------------------------
-// Parser – Numbers (Integers)
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_integer_zero() {
@@ -155,9 +149,6 @@ fn parse_negative_sign_not_number() {
     assert_eq!(p1("-"), Atom::symbol("-"));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Numbers (Floats)
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_float_simple() {
@@ -199,9 +190,6 @@ fn negative_number_vs_symbol() {
     assert!(p1("-").is_symbol());
 }
 
-// -----------------------------------------------------------------------
-// Parser – Strings
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_string_empty() {
@@ -273,9 +261,6 @@ fn parse_invalid_escape() {
     ));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Keywords
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_keyword_basic() {
@@ -293,9 +278,6 @@ fn parse_empty_keyword() {
     assert!(matches!(r, Err(SexParserError::EmptyKeyword { .. })));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Lists
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_empty_list() {
@@ -356,9 +338,6 @@ fn parse_unterminated_list_empty() {
     assert!(matches!(r, Err(SexParserError::UnterminatedList { .. })));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Whitespace
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_with_leading_whitespace() {
@@ -379,9 +358,6 @@ fn parse_with_tabs_and_newlines() {
     );
 }
 
-// -----------------------------------------------------------------------
-// Parser – multiple top-level atoms
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_multiple_atoms() {
@@ -421,9 +397,6 @@ fn parse_whitespace_only() {
     assert!(atoms.is_empty());
 }
 
-// -----------------------------------------------------------------------
-// Parser – Single-atom parsing via parse_atom
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_atom_single() {
@@ -435,9 +408,6 @@ fn parse_atom_errors_on_trailing() {
     assert!(parse_atom("42 foo").is_err());
 }
 
-// -----------------------------------------------------------------------
-// Parser – Error positions
-// -----------------------------------------------------------------------
 
 #[test]
 fn error_position_tracked() {
@@ -478,9 +448,6 @@ fn error_unexpected_char() {
     ));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Edge cases
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_mixed_keywords_and_symbols_in_list() {
@@ -497,9 +464,6 @@ fn parse_keyword_atom_near_list_boundary() {
     assert_eq!(list[0], Atom::keyword("tag"));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Real-world shaped data
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_deftexture_shape() {
@@ -539,9 +503,6 @@ fn parse_mixed_keywords_positional() {
     assert_eq!(ty[2], Atom::symbol("iosevka"));
 }
 
-// -----------------------------------------------------------------------
-// Parser – Additional edge cases
-// -----------------------------------------------------------------------
 
 #[test]
 fn nil_in_list() {

@@ -1,8 +1,5 @@
 use sex::{Atom, AtomTy, KeywordView, Number, SexError};
 
-// -----------------------------------------------------------------------
-// KeywordView – construction
-// -----------------------------------------------------------------------
 
 #[test]
 fn keyword_view_empty() {
@@ -51,9 +48,6 @@ fn keyword_view_from_atom_view() {
     assert_eq!(kv.required::<i64>("b").unwrap(), 2);
 }
 
-// -----------------------------------------------------------------------
-// KeywordView – required / optional
-// -----------------------------------------------------------------------
 
 #[test]
 fn keyword_view_required_ok() {
@@ -90,9 +84,6 @@ fn keyword_view_required_type_error() {
     assert!(matches!(err, SexError::TypeError { .. }));
 }
 
-// -----------------------------------------------------------------------
-// KeywordView – errors
-// -----------------------------------------------------------------------
 
 #[test]
 fn keyword_view_errors_on_non_keyword() {
@@ -144,9 +135,6 @@ fn keyword_view_errors_on_keyword_without_value_among_others() {
     assert!(matches!(err, SexError::ExpectedAtom));
 }
 
-// -----------------------------------------------------------------------
-// KeywordView – iter
-// -----------------------------------------------------------------------
 
 #[test]
 fn keyword_view_iter() {
@@ -161,9 +149,6 @@ fn keyword_view_iter() {
     assert_eq!(pairs.len(), 2);
 }
 
-// -----------------------------------------------------------------------
-// KeywordView – from_slice with parse integration
-// -----------------------------------------------------------------------
 
 #[test]
 fn keyword_view_from_parsed_list() {

@@ -1,8 +1,5 @@
 use sex::{Atom, AtomTy, FromSex, Number, SexError, Text, TextTy};
 
-// -----------------------------------------------------------------------
-// FromSex – String (accepts any text variant)
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_string_from_symbol() {
@@ -34,9 +31,6 @@ fn from_sex_string_err_on_nil() {
     assert!(String::from_sex(&Atom::Nil).is_err());
 }
 
-// -----------------------------------------------------------------------
-// FromSex – Integer types
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_i64_ok() {
@@ -86,9 +80,6 @@ fn from_sex_int_underflow() {
     assert!(matches!(err, SexError::Overflow { expected: AtomTy::Integer, .. }));
 }
 
-// -----------------------------------------------------------------------
-// FromSex – Float types
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_f64_from_float() {
@@ -121,9 +112,6 @@ fn from_sex_f32_overflow() {
     assert!(matches!(err, SexError::Overflow { expected: AtomTy::Float, .. }));
 }
 
-// -----------------------------------------------------------------------
-// FromSex – bool
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_bool_nil_is_false() {
@@ -140,9 +128,6 @@ fn from_sex_bool_any_non_nil_is_true() {
     assert!(bool::from_sex(&Atom::List(vec![])).unwrap());
 }
 
-// -----------------------------------------------------------------------
-// FromSex – ()
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_unit_from_nil() {
@@ -154,9 +139,6 @@ fn from_sex_unit_err_on_text() {
     assert!(<()>::from_sex(&Atom::symbol("x")).is_err());
 }
 
-// -----------------------------------------------------------------------
-// FromSex – Option<T>
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_option_none() {
@@ -177,9 +159,6 @@ fn from_sex_option_inside_list() {
     assert_eq!(r, vec![Some(1), None]);
 }
 
-// -----------------------------------------------------------------------
-// FromSex – Vec<T>
-// -----------------------------------------------------------------------
 
 #[test]
 fn from_sex_vec_empty() {
@@ -211,9 +190,6 @@ fn from_sex_vec_type_error_inside() {
     assert!(r.is_err());
 }
 
-// -----------------------------------------------------------------------
-// Text struct
-// -----------------------------------------------------------------------
 
 #[test]
 fn text_struct_fields_accessible() {

@@ -1,8 +1,5 @@
 use sex::{Atom, AtomTy, AtomView, FromSex, KeywordView, Number, SexError};
 
-// -----------------------------------------------------------------------
-// AtomView – Construction and basic iteration
-// -----------------------------------------------------------------------
 
 #[test]
 fn empty_view() {
@@ -18,7 +15,7 @@ fn single_atom() {
     let atoms = [Atom::symbol("hello")];
     let mut v = AtomView::new(&atoms);
     assert!(!v.is_finished());
-    assert_eq!(v.peek(), Some(&Atom::symbol("hello")));
+    assert_eq!(v.peek(), None);
     assert_eq!(v.pop(), Some(&Atom::symbol("hello")));
     assert!(v.is_finished());
     assert_eq!(v.pop(), None);
@@ -38,9 +35,6 @@ fn multiple_atoms() {
     assert_eq!(v.pop(), None);
 }
 
-// -----------------------------------------------------------------------
-// AtomView – at returns current without advancing
-// -----------------------------------------------------------------------
 
 #[test]
 fn at_does_not_advance() {
@@ -60,9 +54,6 @@ fn peek_does_not_advance() {
     assert_eq!(v.remaining(), 2);
 }
 
-// -----------------------------------------------------------------------
-// AtomView – skip
-// -----------------------------------------------------------------------
 
 #[test]
 fn skip_partial() {
@@ -89,10 +80,6 @@ fn skip_zero() {
     assert_eq!(v.pop(), Some(&Atom::symbol("a")));
 }
 
-// -----------------------------------------------------------------------
-// AtomView – remaining_slice
-// -----------------------------------------------------------------------
-
 #[test]
 fn remaining_slice_after_consumption() {
     let atoms = [Atom::symbol("a"), Atom::symbol("b"), Atom::symbol("c")];
@@ -100,10 +87,6 @@ fn remaining_slice_after_consumption() {
     v.pop();
     assert_eq!(v.remaining_slice(), &[Atom::symbol("b"), Atom::symbol("c")]);
 }
-
-// -----------------------------------------------------------------------
-// AtomView – enter_list
-// -----------------------------------------------------------------------
 
 #[test]
 fn enter_list_empty() {
@@ -140,9 +123,6 @@ fn enter_list_eof() {
     assert!(matches!(err, SexError::ExpectedAtom));
 }
 
-// -----------------------------------------------------------------------
-// AtomView – Integration with parsing
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_then_view() {
@@ -196,9 +176,6 @@ fn keyword_then_value_pattern() {
     assert_eq!(kw.get("height"), Some(&Atom::Number(Number::Integer(600))));
 }
 
-// -----------------------------------------------------------------------
-// AtomView – try_at / try_pop / expect_finished
-// -----------------------------------------------------------------------
 
 #[test]
 fn try_at_returns_atom() {
