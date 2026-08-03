@@ -280,10 +280,102 @@ fn parse_unterminated_string_after_escape() {
 
 #[test]
 fn parse_invalid_escape() {
-    let r = parse_listed(r#""\x""#);
+    let r = parse_listed(r#""\q""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidEscape { ch: 'x', .. })
+        Err(SexParserError::InvalidEscape { ch: 'q', .. })
+    ));
+}
+
+#[test]
+fn parse_escape_null() {
+    assert_eq!(parse_atom(r#""a\0b""#).unwrap(), Atom::string("a\0b"));
+}
+
+#[test]
+fn parse_escape_hex_ascii() {
+    assert_eq!(parse_atom(r#""\x41""#).unwrap(), Atom::string("A"));
+}
+
+#[test]
+fn parse_escape_hex_lowercase() {
+    assert_eq!(parse_atom(r#""\x7f""#).unwrap(), Atom::string("\u{7f}"));
+}
+
+#[test]
+fn parse_escape_hex_too_large() {
+    let r = parse_listed(r#""\x80""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidHexEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_hex_missing_digit() {
+    let r = parse_listed(r#""\x4""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidHexEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_hex_invalid_char() {
+    let r = parse_listed(r#""\xzz""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidHexEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_unicode() {
+    assert_eq!(parse_atom(r#""\u{7FFF}""#).unwrap(), Atom::string("\u{7FFF}"));
+}
+
+#[test]
+fn parse_escape_unicode_empty() {
+    let r = parse_listed(r#""\u{}""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_unicode_missing_brace() {
+    let r = parse_listed(r#""\u{41""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_unicode_surrogate() {
+    let r = parse_listed(r#""\u{D800}""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_unicode_too_large() {
+    let r = parse_listed(r#""\u{110000}""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeEscape { .. })
+    ));
+}
+
+#[test]
+fn parse_escape_unicode_no_brace() {
+    let r = parse_listed(r#""\u41""#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeEscape { .. })
     ));
 }
 

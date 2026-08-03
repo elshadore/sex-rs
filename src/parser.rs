@@ -38,6 +38,8 @@ pub enum SexParserError {
     UnterminatedList { pos: Position },
     UnterminatedString { pos: Position },
     InvalidEscape { pos: Position, ch: char },
+    InvalidHexEscape { pos: Position, value: String },
+    InvalidUnicodeEscape { pos: Position, value: String },
     InvalidNumber { pos: Position, value: String },
     EmptyKeyword { pos: Position },
     ExpectedWhitespace { pos: Position, ch: char },
@@ -56,6 +58,12 @@ impl std::fmt::Display for SexParserError {
             SexParserError::UnterminatedString { pos } => write!(f, "{}: unterminated string", pos),
             SexParserError::InvalidEscape { pos, ch } => {
                 write!(f, "{}: invalid escape sequence '\\{}'", pos, ch)
+            }
+            SexParserError::InvalidHexEscape { pos, value } => {
+                write!(f, "{}: invalid hex escape '\\x{}'", pos, value)
+            }
+            SexParserError::InvalidUnicodeEscape { pos, value } => {
+                write!(f, "{}: invalid unicode escape '\\u{{{}}}'", pos, value)
             }
             SexParserError::InvalidNumber { pos, value } => {
                 write!(f, "{}: invalid number '{}'", pos, value)
@@ -194,9 +202,9 @@ impl<R: BufRead> Parser<R> {
     fn exec_listed(&mut self) -> Result<List, SexParserError> {
         let mut atoms = Vec::new();
         let mut whitespace: bool = true;
-        
+
         self.skip_whitespace();
-        
+
         loop {
             if self.is_finished() {
                 break;
@@ -207,7 +215,7 @@ impl<R: BufRead> Parser<R> {
             atoms.push(self.parse_atom()?);
             whitespace = self.skip_whitespace();
         }
-        
+
         Ok(atoms)
     }
 
@@ -238,11 +246,11 @@ impl<R: BufRead> Parser<R> {
 
     fn parse_list(&mut self) -> Result<Atom, SexParserError> {
         self.inc_expect('(')?;
-        
+
         let mut list: List = Vec::new();
         let mut first: bool = true;
         let mut whitespace = self.skip_whitespace();
-        
+
         loop {
             match self.at() {
                 None => return Err(self.unterminated_list()),
@@ -252,7 +260,7 @@ impl<R: BufRead> Parser<R> {
                 }
                 Some(c) => {
                     if !first && !whitespace {
-                        return Err(self.expected_whitespace(c))
+                        return Err(self.expected_whitespace(c));
                     }
                     list.push(self.parse_atom()?);
                 }
@@ -269,25 +277,30 @@ impl<R: BufRead> Parser<R> {
         loop {
             match self.inc() {
                 None => return Err(self.unterminated_string()),
-                Some('"') => break,
-                Some('\\') => match self.inc() {
-                    None => return Err(self.unterminated_string()),
-                    Some('"') => s.push('"'),
-                    Some('\\') => s.push('\\'),
-                    Some('n') => s.push('\n'),
-                    Some('t') => s.push('\t'),
-                    Some('r') => s.push('\r'),
-                    Some(ch) => {
-                        return Err(self.invalid_escape(ch));
-                    }
-                },
+                Some('"') => {
+                    return Ok(Atom::Text(Text {
+                        ty: TextTy::String,
+                        contents: s,
+                    }));
+                }
+                Some('\\') => {
+                    let esc = match self.inc() {
+                        None => return Err(self.unterminated_string()),
+                        Some('"') => '"',
+                        Some('\\') => '\\',
+                        Some('n') => '\n',
+                        Some('t') => '\t',
+                        Some('r') => '\r',
+                        Some('0') => '\0',
+                        Some('x') => self.read_hex_escape()?,
+                        Some('u') => self.read_unicode_escape()?,
+                        Some(ch) => return Err(self.invalid_escape(ch)),
+                    };
+                    s.push(esc);
+                }
                 Some(ch) => s.push(ch),
             }
         }
-        Ok(Atom::Text(Text {
-            ty: TextTy::String,
-            contents: s,
-        }))
     }
 
     fn parse_keyword(&mut self) -> Result<Atom, SexParserError> {
@@ -326,6 +339,64 @@ impl<R: BufRead> Parser<R> {
             contents: name,
         }))
     }
+
+    fn read_hex_digit(&mut self) -> Result<u32, SexParserError> {
+        match self.inc() {
+            Some(ch) if ch.is_ascii_hexdigit() => {
+                Ok(ch.to_digit(16).unwrap_or(0))
+            }
+            Some(ch) => Err(self.invalid_hex_escape(format!("{ch}"))),
+            None => Err(self.invalid_hex_escape(String::new())),
+        }
+    }
+
+    fn read_hex_escape(&mut self) -> Result<char, SexParserError> {
+        let start = self.pos;
+        let hi = self.read_hex_digit()?;
+        let lo = self.read_hex_digit()?;
+        let value = (hi << 4) | lo;
+        if value > 0x7F {
+            return Err(SexParserError::InvalidHexEscape {
+                pos: start,
+                value: format!("{:02x}", value),
+            });
+        }
+        Ok(char::from_u32(value).unwrap())
+    }
+
+    fn read_unicode_escape(&mut self) -> Result<char, SexParserError> {
+        let mut value: u32 = 0;
+        let mut digits: u32 = 0;
+        if self.inc() != Some('{') {
+            return Err(self.invalid_unicode_escape(String::new()));
+        }
+        loop {
+            match self.inc() {
+                Some('}') => break,
+                Some(ch) if ch.is_ascii_hexdigit() && digits < 6 => {
+                    value = value * 16 + ch.to_digit(16).unwrap_or(0);
+                    digits += 1;
+                }
+                Some(ch) if ch.is_ascii_hexdigit() => {
+                    return Err(self.invalid_unicode_escape(ch.to_string()));
+                }
+                Some(ch) => {
+                    return Err(self.invalid_unicode_escape(ch.to_string()));
+                }
+                None => {
+                    return Err(self.invalid_unicode_escape(String::new()));
+                }
+            }
+        }
+        if digits == 0 {
+            return Err(self.invalid_unicode_escape(String::new()));
+        }
+        match char::from_u32(value) {
+            Some(ch) => Ok(ch),
+            None => Err(self.invalid_unicode_escape(format!("{value:x}"))),
+        }
+    }
+
 
     fn parse_number(&mut self) -> Result<Atom, SexParserError> {
         let start = self.pos;
@@ -385,15 +456,26 @@ impl<R: BufRead> Parser<R> {
         SexParserError::InvalidEscape { pos: self.pos, ch }
     }
 
+    fn invalid_hex_escape(&self, value: String) -> SexParserError {
+        SexParserError::InvalidHexEscape {
+            pos: self.pos,
+            value,
+        }
+    }
+
+    fn invalid_unicode_escape(&self, value: String) -> SexParserError {
+        SexParserError::InvalidUnicodeEscape {
+            pos: self.pos,
+            value,
+        }
+    }
+
     fn empty_keyword(&self) -> SexParserError {
         SexParserError::EmptyKeyword { pos: self.pos }
     }
 
     fn expected_whitespace(&self, ch: char) -> SexParserError {
-        SexParserError::ExpectedWhitespace {
-            pos: self.pos,
-            ch,
-        }
+        SexParserError::ExpectedWhitespace { pos: self.pos, ch }
     }
 
     fn expected_single_atom(&self) -> SexParserAtomError {
