@@ -329,7 +329,7 @@ fn parse_invalid_escape() {
     let r = parse_listed(r#""\q""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidEscape { ch: 'q', .. })
+        Err(SexParserError::MalformedStringEscape { ch: 'q', .. })
     ));
 }
 
@@ -364,7 +364,7 @@ fn parse_escape_hex_missing_digit() {
     let r = parse_listed(r#""\x4""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidHexEscape { .. })
+        Err(SexParserError::MalformedHexEscape { .. })
     ));
 }
 
@@ -373,7 +373,7 @@ fn parse_escape_hex_invalid_char() {
     let r = parse_listed(r#""\xzz""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidHexEscape { .. })
+        Err(SexParserError::MalformedHexEscape { .. })
     ));
 }
 
@@ -387,7 +387,7 @@ fn parse_escape_unicode_empty() {
     let r = parse_listed(r#""\u{}""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidUnicodeEscape { .. })
+        Err(SexParserError::MalformedUnicodeEscape { .. })
     ));
 }
 
@@ -396,7 +396,7 @@ fn parse_escape_unicode_missing_brace() {
     let r = parse_listed(r#""\u{41""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidUnicodeEscape { .. })
+        Err(SexParserError::MalformedUnicodeEscape { .. })
     ));
 }
 
@@ -405,7 +405,7 @@ fn parse_escape_unicode_surrogate() {
     let r = parse_listed(r#""\u{D800}""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidUnicodeEscape { .. })
+        Err(SexParserError::MalformedUnicodeEscape { .. })
     ));
 }
 
@@ -414,7 +414,7 @@ fn parse_escape_unicode_too_large() {
     let r = parse_listed(r#""\u{110000}""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidUnicodeEscape { .. })
+        Err(SexParserError::MalformedUnicodeEscape { .. })
     ));
 }
 
@@ -423,7 +423,7 @@ fn parse_escape_unicode_no_brace() {
     let r = parse_listed(r#""\u41""#);
     assert!(matches!(
         r,
-        Err(SexParserError::InvalidUnicodeEscape { .. })
+        Err(SexParserError::MalformedUnicodeEscape { .. })
     ));
 }
 

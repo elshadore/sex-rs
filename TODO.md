@@ -3,6 +3,11 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
+- [ ] Add index to `Position`
+- [ ] Nice Parser Errors like *compilation* buffer format
+  - Prints line number, char number, full line print, error print.
+  - Parser `Metadata` for file name 
+  - Seperate Logical Parser Error that are `Copy` and `Clone`
 - [x] `;` Comments
 - [x] `true` and `false`
 - [ ] Full symbol processing
@@ -28,3 +33,4 @@ Both symbols and strings have to be valid unicode characters.
 - [ ] default in the declarative macro should use the Default trait if no value is provided
 - [ ] Quality Check
 - [ ] Re Add Back in Tests
+- [ ] Look at Error Messages to see if they make sense.

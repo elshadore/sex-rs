@@ -31,17 +31,80 @@ fn read_char(reader: &mut impl BufRead) -> Option<char> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum MalformedHexCode {
+    InvalidLeft { left: char },
+    InvalidRight { left: char, right: char },
+    MissingLeft,
+    MissingRight { left: char },
+}
+
+impl MalformedHexCode {
+    pub fn invalid_left(left: char) -> Self {
+        Self::InvalidLeft { left }
+    }
+
+    pub fn invalid_right(left: char, right: char) -> Self {
+        Self::InvalidRight { left, right }
+    }
+
+    pub fn missing_left() -> Self {
+        Self::MissingLeft
+    }
+
+    pub fn missing_right(left: char) -> Self {
+        Self::MissingRight { left }
+    }
+}
+
+#[derive(Debug)]
+pub enum HexError {
+    Invalid(char),
+    NoChar,
+}
+
 #[derive(Debug)]
 pub enum SexParserError {
-    UnexpectedEof { pos: Position },
-    UnexpectedChar { pos: Position, ch: char },
-    UnterminatedList { pos: Position },
-    UnterminatedString { pos: Position },
-    InvalidEscape { pos: Position, ch: char },
-    InvalidUnicodeEscape { pos: Position, value: String },
-    InvalidNumber { pos: Position, value: String },
-    EmptyKeyword { pos: Position },
-    ExpectedWhitespace { pos: Position, ch: char },
+    UnexpectedEof {
+        pos: Position,
+    },
+    UnexpectedChar {
+        pos: Position,
+        ch: char,
+    },
+    UnterminatedList {
+        pos: Position,
+    },
+    UnterminatedString {
+        pos: Position,
+    },
+    MalformedStringEscape {
+        pos: Position,
+        ch: char,
+    },
+    MalformedHexEscape {
+        pos: Position,
+        value: MalformedHexCode,
+    },
+    MalformedUnicodeEscape {
+        pos: Position,
+        value: char,
+    },
+    InvalidUnicodeChar {
+        pos: Position,
+        value: u32,
+    },
+    InvalidNumber {
+        pos: Position,
+        value: String,
+    },
+    EmptyKeyword {
+        pos: Position,
+    },
+    ExpectedWhitespace {
+        pos: Position,
+        ch: char,
+    },
 }
 
 impl std::fmt::Display for SexParserError {
@@ -55,14 +118,41 @@ impl std::fmt::Display for SexParserError {
                 write!(f, "{}: unterminated list, expected ')'", pos)
             }
             SexParserError::UnterminatedString { pos } => write!(f, "{}: unterminated string", pos),
-            SexParserError::InvalidEscape { pos, ch } => {
-                write!(f, "{}: invalid escape sequence '\\{}'", pos, ch)
+            SexParserError::MalformedStringEscape { pos, ch } => {
+                write!(f, "{}: malformed string escape sequence '\\{}'", pos, ch)
             }
-            SexParserError::InvalidHexEscape { pos, value } => {
-                write!(f, "{}: invalid hex escape '\\x{}'", pos, value)
-            }
-            SexParserError::InvalidUnicodeEscape { pos, value } => {
-                write!(f, "{}: invalid unicode escape '\\u{{{}}}'", pos, value)
+            SexParserError::MalformedHexEscape { pos, value } => match value {
+                MalformedHexCode::InvalidLeft { left } => {
+                    write!(
+                        f,
+                        "{}: malformed hex escape sequence in the first position: '\\x{}?'",
+                        pos, left
+                    )
+                }
+                MalformedHexCode::InvalidRight { left, right } => {
+                    write!(
+                        f,
+                        "{}: malformed hex escape sequence in the second position: '\\x{}{}'",
+                        pos, left, right
+                    )
+                }
+                MalformedHexCode::MissingLeft => {
+                    write!(
+                        f,
+                        "{}: malformed hex escape sequence, string ended before any hexcodes could be read!",
+                        pos
+                    )
+                }
+                MalformedHexCode::MissingRight { left } => {
+                    write!(
+                        f,
+                        "{}: malformed hex escape sequence, string ended before second hexcode could be read: '\\x{}_'",
+                        pos, left
+                    )
+                }
+            },
+            SexParserError::MalformedUnicodeEscape { pos, value } => {
+                write!(f, "{}: malformed unicode escape sequence: {}", pos, value)
             }
             SexParserError::InvalidNumber { pos, value } => {
                 write!(f, "{}: invalid number '{}'", pos, value)
@@ -70,6 +160,9 @@ impl std::fmt::Display for SexParserError {
             SexParserError::EmptyKeyword { pos } => write!(f, "{}: empty keyword", pos),
             SexParserError::ExpectedWhitespace { pos, ch } => {
                 write!(f, "{}: expected whitespace before '{}'", pos, ch)
+            }
+            SexParserError::InvalidUnicodeChar { pos, value } => {
+                write!(f, "{}, invalid unicode character '\\u{{{:x}}}'", pos, value)
             }
         }
     }
@@ -302,7 +395,7 @@ impl<R: BufRead> Parser<R> {
                         Some('0') => '\0',
                         Some('x') => self.read_hex_escape()?,
                         Some('u') => self.read_unicode_escape()?,
-                        Some(ch) => return Err(self.invalid_escape(ch)),
+                        Some(ch) => return Err(self.malformed_string_escape(ch)),
                     };
                     s.push(esc);
                 }
@@ -350,25 +443,48 @@ impl<R: BufRead> Parser<R> {
         }
     }
 
-    fn read_hex_digit(&mut self) -> Result<u8, SexParserError> {
+    fn read_hex_digit(&mut self) -> Result<u8, HexError> {
         match self.inc() {
             Some(ch) if ch.is_ascii_hexdigit() => Ok(ch.to_digit(16).unwrap_or(0) as u8),
-            Some(ch) => Err(self.invalid_hex_escape(format!("{ch}"))),
-            None => Err(self.invalid_hex_escape(String::new())),
+            Some(ch) => Err(HexError::Invalid(ch)),
+            None => Err(HexError::NoChar),
         }
     }
 
     fn read_hex_escape(&mut self) -> Result<char, SexParserError> {
-        let hi = self.read_hex_digit()?;
-        let lo = self.read_hex_digit()?;
-        Ok(char::from((hi << 4) | lo))
+        match self.read_hex_digit() {
+            Ok(hi) => {
+                match self.read_hex_digit() {
+                    Ok(lo) => Ok(char::from((hi << 4) | lo)),
+                    Err(HexError::Invalid(right)) => {
+                        Err(self.malformed_hex_escape(MalformedHexCode::InvalidRight {
+                            left: hi.into(),
+                            right,
+                        }))
+                    }
+                    Err(HexError::NoChar) => Err(self
+                        .malformed_hex_escape(MalformedHexCode::MissingRight { left: hi.into() })),
+                }
+            }
+            Err(HexError::Invalid(left)) => {
+                Err(self.malformed_hex_escape(MalformedHexCode::InvalidLeft { left }))
+            }
+            Err(HexError::NoChar) => Err(self.malformed_hex_escape(MalformedHexCode::MissingLeft)),
+        }
     }
 
     fn read_unicode_escape(&mut self) -> Result<char, SexParserError> {
         let mut value: u32 = 0;
         let mut digits: u32 = 0;
-        if self.inc() != Some('{') {
-            return Err(self.invalid_unicode_escape(String::new()));
+        match self.inc() {
+            Some(c) => {
+                if c != '{' {
+                    return Err(self.malformed_unicode_escape(c));
+                }
+            }
+            None => {
+                return Err(self.malformed_unicode_escape('\0'));
+            }
         }
         loop {
             match self.inc() {
@@ -378,22 +494,22 @@ impl<R: BufRead> Parser<R> {
                     digits += 1;
                 }
                 Some(ch) if ch.is_ascii_hexdigit() => {
-                    return Err(self.invalid_unicode_escape(ch.to_string()));
+                    return Err(self.malformed_unicode_escape(ch));
                 }
                 Some(ch) => {
-                    return Err(self.invalid_unicode_escape(ch.to_string()));
+                    return Err(self.malformed_unicode_escape(ch));
                 }
                 None => {
-                    return Err(self.invalid_unicode_escape(String::new()));
+                    return Err(self.malformed_unicode_escape('\0'));
                 }
             }
         }
         if digits == 0 {
-            return Err(self.invalid_unicode_escape(String::new()));
+            return Err(self.malformed_unicode_escape('\0'));
         }
         match char::from_u32(value) {
             Some(ch) => Ok(ch),
-            None => Err(self.invalid_unicode_escape(format!("{value:x}"))),
+            None => Err(self.invalid_unicode_char(value)),
         }
     }
 
@@ -451,19 +567,26 @@ impl<R: BufRead> Parser<R> {
         SexParserError::UnterminatedString { pos: self.pos }
     }
 
-    fn invalid_escape(&self, ch: char) -> SexParserError {
-        SexParserError::InvalidEscape { pos: self.pos, ch }
+    fn malformed_string_escape(&self, ch: char) -> SexParserError {
+        SexParserError::MalformedStringEscape { pos: self.pos, ch }
     }
 
-    fn invalid_hex_escape(&self, value: String) -> SexParserError {
-        SexParserError::InvalidHexEscape {
+    fn malformed_hex_escape(&self, value: MalformedHexCode) -> SexParserError {
+        SexParserError::MalformedHexEscape {
             pos: self.pos,
             value,
         }
     }
 
-    fn invalid_unicode_escape(&self, value: String) -> SexParserError {
-        SexParserError::InvalidUnicodeEscape {
+    fn malformed_unicode_escape(&self, value: char) -> SexParserError {
+        SexParserError::MalformedUnicodeEscape {
+            pos: self.pos,
+            value,
+        }
+    }
+
+    fn invalid_unicode_char(&self, value: u32) -> SexParserError {
+        SexParserError::InvalidUnicodeChar {
             pos: self.pos,
             value,
         }
