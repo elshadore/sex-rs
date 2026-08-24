@@ -194,6 +194,15 @@ impl<R: BufRead> Parser<R> {
                     result = true;
                     self.inc();
                 }
+                Some(';') => {
+                    result = true;
+                    while let Some(ch) = self.at() {
+                        self.inc();
+                        if ch == '\n' {
+                            break;
+                        }
+                    }
+                }
                 _ => return result,
             }
         }
@@ -331,20 +340,20 @@ impl<R: BufRead> Parser<R> {
             name.push(ch);
             self.inc();
         }
-        if name == "nil" {
-            return Ok(Atom::Nil);
+        match name.as_str() {
+            "nil" => Ok(Atom::Nil),
+            "true" => Ok(Atom::True),
+            "false" => Ok(Atom::False),
+            _ => Ok(Atom::Text(Text {
+                ty: TextTy::Symbol,
+                contents: name,
+            })),
         }
-        Ok(Atom::Text(Text {
-            ty: TextTy::Symbol,
-            contents: name,
-        }))
     }
 
     fn read_hex_digit(&mut self) -> Result<u32, SexParserError> {
         match self.inc() {
-            Some(ch) if ch.is_ascii_hexdigit() => {
-                Ok(ch.to_digit(16).unwrap_or(0))
-            }
+            Some(ch) if ch.is_ascii_hexdigit() => Ok(ch.to_digit(16).unwrap_or(0)),
             Some(ch) => Err(self.invalid_hex_escape(format!("{ch}"))),
             None => Err(self.invalid_hex_escape(String::new())),
         }
@@ -396,7 +405,6 @@ impl<R: BufRead> Parser<R> {
             None => Err(self.invalid_unicode_escape(format!("{value:x}"))),
         }
     }
-
 
     fn parse_number(&mut self) -> Result<Atom, SexParserError> {
         let start = self.pos;
@@ -484,20 +492,7 @@ impl<R: BufRead> Parser<R> {
 }
 
 fn is_symbol_char(ch: char) -> bool {
-    ch.is_alphanumeric()
-        || ch == '-'
-        || ch == '_'
-        || ch == '.'
-        || ch == '/'
-        || ch == '*'
-        || ch == '+'
-        || ch == '!'
-        || ch == '?'
-        || ch == '<'
-        || ch == '>'
-        || ch == '='
-        || ch == '&'
-        || ch == '%'
+    ch.is_alphanumeric() || ch.is_ascii_graphic()
 }
 
 /// Parses multiple atoms/expressions from a string.

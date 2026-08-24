@@ -9,6 +9,8 @@ pub enum AtomTy {
     Float,
     Nil,
     List,
+    True,
+    False,
 }
 
 impl fmt::Display for AtomTy {
@@ -21,6 +23,8 @@ impl fmt::Display for AtomTy {
             AtomTy::Float => write!(f, "float"),
             AtomTy::Nil => write!(f, "nil"),
             AtomTy::List => write!(f, "list"),
+            AtomTy::True => write!(f, "true"),
+            AtomTy::False => write!(f, "false"),
         }
     }
 }
@@ -97,6 +101,8 @@ pub type List = Vec<Atom>;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Atom {
     Nil,
+    True,
+    False,
     Number(Number),
     Text(Text),
     List(List),
@@ -133,7 +139,20 @@ impl Atom {
     }
 
     pub fn is_true(&self) -> bool {
-        !self.is_nil()
+        matches!(self, Atom::True)
+    }
+
+    /// Is either `false` or `nil`.
+    pub fn is_falsey(&self) -> bool {
+        match self {
+            Atom::False | Atom::Nil => true,
+            _ => false,
+        }
+    }
+
+    /// Is literally the `false` value. So `nil` returns `false`, and `false` returns `true`. Easy!
+    pub fn is_false_strict(&self) -> bool {
+        matches!(self, Atom::False)
     }
 
     pub fn is_symbol(&self) -> bool {
@@ -144,12 +163,12 @@ impl Atom {
         matches!(self, Atom::Text(t) if t.ty == TextTy::Keyword)
     }
 
-    // Is the lisp atom a text type, i.e a string, symbol or a keyword.
+    /// Is the lisp atom a text type, i.e a string, symbol or a keyword.
     pub fn is_text(&self) -> bool {
         matches!(self, Atom::Text(_))
     }
 
-    // Is the lisp atom a number type, i.e an integer or a float.
+    /// Is the lisp atom a number type, i.e an integer or a float.
     pub fn is_number(&self) -> bool {
         matches!(self, Atom::Number(_))
     }
@@ -248,135 +267,5 @@ impl Atom {
             expected: AtomTy::List,
             found: self.clone(),
         })
-    }
-}
-
-pub trait FromSex: Sized {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError>;
-}
-
-impl FromSex for String {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Text(t) => Ok(t.contents.clone()),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::Text,
-                found: atom.clone(),
-            }),
-        }
-    }
-}
-
-impl FromSex for i64 {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Number(Number::Integer(n)) => Ok(*n),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::Integer,
-                found: atom.clone(),
-            }),
-        }
-    }
-}
-
-macro_rules! template_impl_from_sex_int {
-    ($($t:ty),* $(,)?) => {
-        $(
-            impl FromSex for $t {
-                fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-                    match atom {
-                        Atom::Number(Number::Integer(n)) => {
-                            <$t>::try_from(*n).map_err(|_| SexError::Overflow {
-                                expected: AtomTy::Integer,
-                                value: n.to_string(),
-                            })
-                        }
-                        _ => Err(SexError::TypeError {
-                            expected: AtomTy::Integer,
-                            found: atom.clone(),
-                        }),
-                    }
-                }
-            }
-        )*
-    };
-}
-
-template_impl_from_sex_int!(i8, i16, i32, isize, u8, u16, u32, u64, usize);
-
-impl FromSex for f64 {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Number(Number::Float(n)) => Ok(*n),
-            Atom::Number(Number::Integer(n)) => Ok(*n as f64),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::Float,
-                found: atom.clone(),
-            }),
-        }
-    }
-}
-
-impl FromSex for f32 {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Number(Number::Float(n)) => {
-                if (*n).is_nan() || (*n).abs() > f32::MAX as f64 {
-                    Err(SexError::Overflow {
-                        expected: AtomTy::Float,
-                        value: n.to_string(),
-                    })
-                } else {
-                    Ok(*n as f32)
-                }
-            }
-            Atom::Number(Number::Integer(n)) => Ok(*n as f32),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::Float,
-                found: atom.clone(),
-            }),
-        }
-    }
-}
-
-impl FromSex for bool {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Nil => Ok(false),
-            _ => Ok(true),
-        }
-    }
-}
-
-impl FromSex for () {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Nil => Ok(()),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::Nil,
-                found: atom.clone(),
-            }),
-        }
-    }
-}
-
-impl<T: FromSex> FromSex for Option<T> {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Nil => Ok(None),
-            _ => Ok(Some(T::from_sex(atom)?)),
-        }
-    }
-}
-
-impl<T: FromSex> FromSex for Vec<T> {
-    fn from_sex(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::List(list) => list.iter().map(|a| T::from_sex(a)).collect(),
-            _ => Err(SexError::TypeError {
-                expected: AtomTy::List,
-                found: atom.clone(),
-            }),
-        }
     }
 }
