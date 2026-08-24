@@ -78,8 +78,8 @@ impl<R: BufRead> Parser<R> {
     fn inc_expect(&mut self, expected: char) -> Result<(), SexParserError> {
         match self.inc() {
             Some(ch) if ch == expected => Ok(()),
-            Some(ch) => Err(self.unexpected_char(ch)),
-            None => Err(self.unexpected_eof()),
+            Some(ch) => Err(SexParserError::new_unexpected_char(self.pos, ch)),
+            None => Err(SexParserError::new_unexpected_eof(self.pos)),
         }
     }
 
@@ -117,7 +117,10 @@ impl<R: BufRead> Parser<R> {
                 break;
             }
             if !whitespace {
-                return Err(self.expected_whitespace(self.at().unwrap_or('\0')));
+                return Err(SexParserError::new_expected_whitespace(
+                    self.pos,
+                    self.at().unwrap_or('\0'),
+                ));
             }
             atoms.push(self.parse_atom()?);
             whitespace = self.skip_whitespace();
@@ -131,24 +134,24 @@ impl<R: BufRead> Parser<R> {
         let result = self.parse_atom()?;
         self.skip_whitespace();
         if !self.is_finished() {
-            return Err(self.expected_single_atom());
+            return Err(SexParserAtomError::new_expected_single_atom(self.pos));
         }
         Ok(result)
     }
 
     fn parse_atom(&mut self) -> Result<Atom, SexParserError> {
         match self.at() {
-            None => Err(self.unexpected_eof()),
+            None => Err(SexParserError::new_unexpected_eof(self.pos)),
             Some('(') => self.parse_list(),
             Some('"') => self.parse_string(),
             Some(':') => self.parse_keyword(),
             Some('|') => self.parse_barred(BarredTy::Symbol),
-            Some(ch) if ch == '-' && self.peek().map_or(false, |c| c.is_ascii_digit()) => {
+            Some(ch) if ch == '-' && self.peek().is_some_and(|c| c.is_ascii_digit()) => {
                 self.parse_number()
             }
             Some(ch) if ch.is_ascii_digit() => self.parse_number(),
             Some(ch) if is_symbol_char(ch) => self.parse_symbol(),
-            Some(ch) => Err(self.unexpected_char(ch)),
+            Some(ch) => Err(SexParserError::new_unexpected_char(self.pos, ch)),
         }
     }
 
@@ -161,14 +164,14 @@ impl<R: BufRead> Parser<R> {
 
         loop {
             match self.at() {
-                None => return Err(self.unterminated_list()),
+                None => return Err(SexParserError::new_unterminated_list(self.pos)),
                 Some(')') => {
                     self.inc();
                     break;
                 }
                 Some(c) => {
                     if !first && !whitespace {
-                        return Err(self.expected_whitespace(c));
+                        return Err(SexParserError::new_expected_whitespace(self.pos, c));
                     }
                     list.push(self.parse_atom()?);
                 }
@@ -184,7 +187,7 @@ impl<R: BufRead> Parser<R> {
         let mut s = String::new();
         loop {
             match self.inc() {
-                None => return Err(self.unterminated_string()),
+                None => return Err(SexParserError::new_unterminated_string(self.pos)),
                 Some('"') => {
                     return Ok(Atom::Text(Text {
                         ty: TextTy::String,
@@ -193,7 +196,7 @@ impl<R: BufRead> Parser<R> {
                 }
                 Some('\\') => {
                     let esc = match self.inc() {
-                        None => return Err(self.unterminated_string()),
+                        None => return Err(SexParserError::new_unterminated_string(self.pos)),
                         Some('"') => '"',
                         Some('\\') => '\\',
                         Some('n') => '\n',
@@ -202,7 +205,9 @@ impl<R: BufRead> Parser<R> {
                         Some('0') => '\0',
                         Some('x') => self.read_hex_escape()?,
                         Some('u') => self.read_unicode_escape()?,
-                        Some(ch) => return Err(self.malformed_string_escape(ch)),
+                        Some(ch) => {
+                            return Err(SexParserError::new_malformed_string_escape(self.pos, ch));
+                        }
                     };
                     s.push(esc);
                 }
@@ -216,11 +221,11 @@ impl<R: BufRead> Parser<R> {
         let mut name = String::new();
         loop {
             match self.inc() {
-                None => return Err(self.unterminated_bar_symbol()),
+                None => return Err(SexParserError::new_unterminated_bar_symbol(self.pos)),
                 Some('|') => break,
                 Some('\\') => {
                     let esc = match self.inc() {
-                        None => return Err(self.unterminated_bar_symbol()),
+                        None => return Err(SexParserError::new_unterminated_bar_symbol(self.pos)),
                         Some('"') => '"',
                         Some('|') => '|',
                         Some('\\') => '\\',
@@ -230,7 +235,9 @@ impl<R: BufRead> Parser<R> {
                         Some('0') => '\0',
                         Some('x') => self.read_hex_escape()?,
                         Some('u') => self.read_unicode_escape()?,
-                        Some(ch) => return Err(self.malformed_bar_escape(ch)),
+                        Some(ch) => {
+                            return Err(SexParserError::new_malformed_bar_escape(self.pos, ch));
+                        }
                     };
                     name.push(esc);
                 }
@@ -260,7 +267,7 @@ impl<R: BufRead> Parser<R> {
             self.inc();
         }
         if name.is_empty() {
-            return Err(self.empty_keyword());
+            return Err(SexParserError::new_empty_keyword(self.pos));
         }
         Ok(Atom::Text(Text {
             ty: TextTy::Keyword,
@@ -298,23 +305,28 @@ impl<R: BufRead> Parser<R> {
 
     fn read_hex_escape(&mut self) -> Result<char, SexParserError> {
         match self.read_hex_digit() {
-            Ok(hi) => {
-                match self.read_hex_digit() {
-                    Ok(lo) => Ok(char::from((hi << 4) | lo)),
-                    Err(HexError::Invalid(right)) => {
-                        Err(self.malformed_hex_escape(MalformedHexCode::InvalidRight {
-                            left: hi.into(),
-                            right,
-                        }))
-                    }
-                    Err(HexError::NoChar) => Err(self
-                        .malformed_hex_escape(MalformedHexCode::MissingRight { left: hi.into() })),
-                }
-            }
-            Err(HexError::Invalid(left)) => {
-                Err(self.malformed_hex_escape(MalformedHexCode::InvalidLeft { left }))
-            }
-            Err(HexError::NoChar) => Err(self.malformed_hex_escape(MalformedHexCode::MissingLeft)),
+            Ok(hi) => match self.read_hex_digit() {
+                Ok(lo) => Ok(char::from((hi << 4) | lo)),
+                Err(HexError::Invalid(right)) => Err(SexParserError::new_malformed_hex_escape(
+                    self.pos,
+                    MalformedHexCode::InvalidRight {
+                        left: hi.into(),
+                        right,
+                    },
+                )),
+                Err(HexError::NoChar) => Err(SexParserError::new_malformed_hex_escape(
+                    self.pos,
+                    MalformedHexCode::MissingRight { left: hi.into() },
+                )),
+            },
+            Err(HexError::Invalid(left)) => Err(SexParserError::new_malformed_hex_escape(
+                self.pos,
+                MalformedHexCode::InvalidLeft { left },
+            )),
+            Err(HexError::NoChar) => Err(SexParserError::new_malformed_hex_escape(
+                self.pos,
+                MalformedHexCode::MissingLeft,
+            )),
         }
     }
 
@@ -324,11 +336,11 @@ impl<R: BufRead> Parser<R> {
         match self.inc() {
             Some(c) => {
                 if c != '{' {
-                    return Err(self.malformed_unicode_escape(c));
+                    return Err(SexParserError::new_malformed_unicode_escape(self.pos, c));
                 }
             }
             None => {
-                return Err(self.malformed_unicode_escape('\0'));
+                return Err(SexParserError::new_malformed_unicode_escape(self.pos, '\0'));
             }
         }
         loop {
@@ -339,22 +351,22 @@ impl<R: BufRead> Parser<R> {
                     digits += 1;
                 }
                 Some(ch) if ch.is_ascii_hexdigit() => {
-                    return Err(self.malformed_unicode_escape(ch));
+                    return Err(SexParserError::new_malformed_unicode_escape(self.pos, ch));
                 }
                 Some(ch) => {
-                    return Err(self.malformed_unicode_escape(ch));
+                    return Err(SexParserError::new_malformed_unicode_escape(self.pos, ch));
                 }
                 None => {
-                    return Err(self.malformed_unicode_escape('\0'));
+                    return Err(SexParserError::new_malformed_unicode_escape(self.pos, '\0'));
                 }
             }
         }
         if digits == 0 {
-            return Err(self.malformed_unicode_escape('\0'));
+            return Err(SexParserError::new_malformed_unicode_escape(self.pos, '\0'));
         }
         match char::from_u32(value) {
             Some(ch) => Ok(ch),
-            None => Err(self.invalid_unicode_char(value)),
+            None => Err(SexParserError::new_invalid_unicode_char(self.pos, value)),
         }
     }
 
@@ -382,79 +394,16 @@ impl<R: BufRead> Parser<R> {
         }
 
         if has_dot {
-            let n: f64 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
-                pos: start,
-                value: buf.clone(),
-            })?;
+            let n: f64 = buf
+                .parse()
+                .map_err(|_| SexParserError::new_invalid_number(start, buf.clone()))?;
             Ok(Atom::Number(Number::Float(n)))
         } else {
-            let n: i64 = buf.parse().map_err(|_| SexParserError::InvalidNumber {
-                pos: start,
-                value: buf.clone(),
-            })?;
+            let n: i64 = buf
+                .parse()
+                .map_err(|_| SexParserError::new_invalid_number(start, buf.clone()))?;
             Ok(Atom::Number(Number::Integer(n)))
         }
-    }
-
-    fn unexpected_eof(&self) -> SexParserError {
-        SexParserError::UnexpectedEof { pos: self.pos }
-    }
-
-    fn unexpected_char(&self, ch: char) -> SexParserError {
-        SexParserError::UnexpectedChar { pos: self.pos, ch }
-    }
-
-    fn unterminated_list(&self) -> SexParserError {
-        SexParserError::UnterminatedList { pos: self.pos }
-    }
-
-    fn unterminated_string(&self) -> SexParserError {
-        SexParserError::UnterminatedString { pos: self.pos }
-    }
-
-    fn malformed_string_escape(&self, ch: char) -> SexParserError {
-        SexParserError::MalformedStringEscape { pos: self.pos, ch }
-    }
-
-    fn malformed_hex_escape(&self, value: MalformedHexCode) -> SexParserError {
-        SexParserError::MalformedHexEscape {
-            pos: self.pos,
-            value,
-        }
-    }
-
-    fn malformed_unicode_escape(&self, value: char) -> SexParserError {
-        SexParserError::MalformedUnicodeEscape {
-            pos: self.pos,
-            value,
-        }
-    }
-
-    fn invalid_unicode_char(&self, value: u32) -> SexParserError {
-        SexParserError::InvalidUnicodeChar {
-            pos: self.pos,
-            value,
-        }
-    }
-
-    fn unterminated_bar_symbol(&self) -> SexParserError {
-        SexParserError::UnterminatedBarSymbol { pos: self.pos }
-    }
-
-    fn malformed_bar_escape(&self, ch: char) -> SexParserError {
-        SexParserError::MalformedBarEscape { pos: self.pos, ch }
-    }
-
-    fn empty_keyword(&self) -> SexParserError {
-        SexParserError::EmptyKeyword { pos: self.pos }
-    }
-
-    fn expected_whitespace(&self, ch: char) -> SexParserError {
-        SexParserError::ExpectedWhitespace { pos: self.pos, ch }
-    }
-
-    fn expected_single_atom(&self) -> SexParserAtomError {
-        SexParserAtomError::ExpectedSingleAtom { pos: self.pos }
     }
 }
 

@@ -87,6 +87,60 @@ pub enum SexParserError {
     },
 }
 
+impl SexParserError {
+    pub fn new_unexpected_eof(pos: Position) -> Self {
+        SexParserError::UnexpectedEof { pos }
+    }
+
+    pub fn new_unexpected_char(pos: Position, ch: char) -> Self {
+        SexParserError::UnexpectedChar { pos, ch }
+    }
+
+    pub fn new_unterminated_list(pos: Position) -> Self {
+        SexParserError::UnterminatedList { pos }
+    }
+
+    pub fn new_unterminated_string(pos: Position) -> Self {
+        SexParserError::UnterminatedString { pos }
+    }
+
+    pub fn new_unterminated_bar_symbol(pos: Position) -> Self {
+        SexParserError::UnterminatedBarSymbol { pos }
+    }
+
+    pub fn new_malformed_string_escape(pos: Position, ch: char) -> Self {
+        SexParserError::MalformedStringEscape { pos, ch }
+    }
+
+    pub fn new_malformed_bar_escape(pos: Position, ch: char) -> Self {
+        SexParserError::MalformedBarEscape { pos, ch }
+    }
+
+    pub fn new_malformed_hex_escape(pos: Position, value: MalformedHexCode) -> Self {
+        SexParserError::MalformedHexEscape { pos, value }
+    }
+
+    pub fn new_malformed_unicode_escape(pos: Position, value: char) -> Self {
+        SexParserError::MalformedUnicodeEscape { pos, value }
+    }
+
+    pub fn new_invalid_unicode_char(pos: Position, value: u32) -> Self {
+        SexParserError::InvalidUnicodeChar { pos, value }
+    }
+
+    pub fn new_invalid_number(pos: Position, value: String) -> Self {
+        SexParserError::InvalidNumber { pos, value }
+    }
+
+    pub fn new_empty_keyword(pos: Position) -> Self {
+        SexParserError::EmptyKeyword { pos }
+    }
+
+    pub fn new_expected_whitespace(pos: Position, ch: char) -> Self {
+        SexParserError::ExpectedWhitespace { pos, ch }
+    }
+}
+
 impl std::fmt::Display for SexParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -159,7 +213,15 @@ impl std::error::Error for SexParserError {}
 #[derive(Debug)]
 pub enum SexParserAtomError {
     Generic(SexParserError),
-    ExpectedSingleAtom { pos: Position },
+    ExpectedSingleAtom {
+        pos: Position,
+    },
+}
+
+impl SexParserAtomError {
+    pub fn new_expected_single_atom(pos: Position) -> Self {
+        SexParserAtomError::ExpectedSingleAtom { pos }
+    }
 }
 
 impl std::fmt::Display for SexParserAtomError {

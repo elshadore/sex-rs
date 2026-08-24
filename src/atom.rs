@@ -146,10 +146,7 @@ impl Atom {
 
     /// Is either `false` or `nil`.
     pub fn is_falsey(&self) -> bool {
-        match self {
-            Atom::False | Atom::Nil => true,
-            _ => false,
-        }
+        matches!(self, Atom::False | Atom::Nil)
     }
 
     /// Is literally the `false` value. So `nil` returns `false`, and `false` returns `true`. Easy!
