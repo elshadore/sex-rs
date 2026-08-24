@@ -114,18 +114,29 @@ fn from_sex_f32_overflow() {
 
 
 #[test]
-fn from_sex_bool_nil_is_false() {
+fn from_sex_bool_logic_values() {
+    assert!(bool::from_sex(&Atom::True).unwrap());
+    assert!(!bool::from_sex(&Atom::False).unwrap());
     assert!(!bool::from_sex(&Atom::Nil).unwrap());
 }
 
 #[test]
-fn from_sex_bool_any_non_nil_is_true() {
-    assert!(bool::from_sex(&Atom::symbol("true")).unwrap());
-    assert!(bool::from_sex(&Atom::symbol("false")).unwrap());
-    assert!(bool::from_sex(&Atom::keyword("x")).unwrap());
-    assert!(bool::from_sex(&Atom::string("x")).unwrap());
-    assert!(bool::from_sex(&Atom::Number(Number::Integer(0))).unwrap());
-    assert!(bool::from_sex(&Atom::List(vec![])).unwrap());
+fn from_sex_bool_errs_on_non_logic() {
+    for atom in [
+        Atom::symbol("true"),
+        Atom::keyword("x"),
+        Atom::string("x"),
+        Atom::Number(Number::Integer(0)),
+        Atom::List(vec![]),
+    ] {
+        let err = bool::from_sex(&atom).unwrap_err();
+        match err {
+            SexError::TypeError { expected, .. } => {
+                assert_eq!(expected, AtomTy::Logic);
+            }
+            other => panic!("expected TypeError, got {other}"),
+        }
+    }
 }
 
 

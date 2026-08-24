@@ -87,13 +87,59 @@ fn parse_symbol_single_hyphen() {
 }
 
 #[test]
-fn parse_true_is_a_symbol() {
-    assert_eq!(parse_atom("true").unwrap(), Atom::symbol("true"));
+fn parse_t_is_a_symbol() {
+    assert_eq!(parse_atom("t").unwrap(), Atom::symbol("t"));
 }
 
 #[test]
-fn parse_t_is_a_symbol() {
-    assert_eq!(parse_atom("t").unwrap(), Atom::symbol("t"));
+fn parse_true() {
+    assert_eq!(parse_atom("true").unwrap(), Atom::True);
+}
+
+#[test]
+fn parse_false() {
+    assert_eq!(parse_atom("false").unwrap(), Atom::False);
+}
+
+#[test]
+fn parse_true_in_list() {
+    let atoms = parse_listed("(true)").unwrap();
+    assert_eq!(atoms, vec![Atom::List(vec![Atom::True])]);
+}
+
+#[test]
+fn parse_false_in_list() {
+    let atoms = parse_listed("(false)").unwrap();
+    assert_eq!(atoms, vec![Atom::List(vec![Atom::False])]);
+}
+
+#[test]
+fn parse_logic_values_listed() {
+    let atoms = parse_listed("true false nil").unwrap();
+    assert_eq!(atoms, vec![Atom::True, Atom::False, Atom::Nil]);
+}
+
+#[test]
+fn parse_logic_values_in_list() {
+    let atoms = parse_listed("(true false nil)").unwrap();
+    assert_eq!(
+        atoms,
+        vec![Atom::List(vec![Atom::True, Atom::False, Atom::Nil])]
+    );
+}
+
+#[test]
+fn parse_logic_case_sensitive() {
+    assert_eq!(parse_atom("True").unwrap(), Atom::symbol("True"));
+    assert_eq!(parse_atom("TRUE").unwrap(), Atom::symbol("TRUE"));
+    assert_eq!(parse_atom("False").unwrap(), Atom::symbol("False"));
+    assert_eq!(parse_atom("FALSE").unwrap(), Atom::symbol("FALSE"));
+}
+
+#[test]
+fn parse_logic_prefixes_are_symbols() {
+    assert_eq!(parse_atom("truest").unwrap(), Atom::symbol("truest"));
+    assert_eq!(parse_atom("falsey").unwrap(), Atom::symbol("falsey"));
 }
 
 #[test]
@@ -559,10 +605,10 @@ fn error_unexpected_eof() {
 
 #[test]
 fn error_unexpected_char() {
-    let err = parse_listed("@").unwrap_err();
+    let err = parse_listed(")").unwrap_err();
     assert!(matches!(
         err,
-        SexParserError::UnexpectedChar { ch: '@', .. }
+        SexParserError::UnexpectedChar { ch: ')', .. }
     ));
 }
 

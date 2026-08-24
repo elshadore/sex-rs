@@ -12,6 +12,56 @@ fn nil_is_nil() {
 }
 
 #[test]
+fn true_atom_is_true() {
+    let a = Atom::True;
+    assert!(a.is_true());
+    assert!(!a.is_nil());
+    assert!(!a.is_falsey());
+    assert!(!a.is_false_strict());
+    assert!(!a.is_symbol());
+    assert!(!a.is_keyword());
+    assert!(!a.is_text());
+    assert!(!a.is_number());
+    assert!(!a.is_list());
+}
+
+#[test]
+fn false_atom_is_false_strict() {
+    let a = Atom::False;
+    assert!(a.is_false_strict());
+    assert!(a.is_falsey());
+    assert!(!a.is_true());
+    assert!(!a.is_nil());
+    assert!(!a.is_symbol());
+    assert!(!a.is_keyword());
+    assert!(!a.is_text());
+    assert!(!a.is_number());
+    assert!(!a.is_list());
+}
+
+#[test]
+fn nil_is_falsey_but_not_false_strict() {
+    let a = Atom::Nil;
+    assert!(a.is_falsey());
+    assert!(!a.is_false_strict());
+}
+
+#[test]
+fn other_atoms_are_not_logic() {
+    for a in [
+        Atom::symbol("true"),
+        Atom::keyword("false"),
+        Atom::string("nil"),
+        Atom::Number(Number::Integer(1)),
+        Atom::List(vec![]),
+    ] {
+        assert!(!a.is_true());
+        assert!(!a.is_falsey());
+        assert!(!a.is_false_strict());
+    }
+}
+
+#[test]
 fn symbol_accessors() {
     let a = Atom::symbol("hello");
     assert!(a.is_symbol());
