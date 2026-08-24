@@ -1,7 +1,7 @@
 use crate::{
     MalformedHexCode, Position, SexParserAtomError, SexParserError,
     atom::{Atom, List, Number, Text, TextTy},
-    parser_data::HexError,
+    parser_data::{BarredTy, HexError},
 };
 use std::io::{BufRead, BufReader, Read};
 
@@ -142,7 +142,7 @@ impl<R: BufRead> Parser<R> {
             Some('(') => self.parse_list(),
             Some('"') => self.parse_string(),
             Some(':') => self.parse_keyword(),
-            Some('|') => self.parse_barred_symbol(),
+            Some('|') => self.parse_barred(BarredTy::Symbol),
             Some(ch) if ch == '-' && self.peek().map_or(false, |c| c.is_ascii_digit()) => {
                 self.parse_number()
             }
@@ -211,7 +211,7 @@ impl<R: BufRead> Parser<R> {
         }
     }
 
-    fn parse_barred_symbol(&mut self) -> Result<Atom, SexParserError> {
+    fn parse_barred(&mut self, ty: BarredTy) -> Result<Atom, SexParserError> {
         self.inc_expect('|')?;
         let mut name = String::new();
         loop {
@@ -238,13 +238,19 @@ impl<R: BufRead> Parser<R> {
             }
         }
         Ok(Atom::Text(Text {
-            ty: TextTy::Symbol,
+            ty: match ty {
+                BarredTy::Symbol => TextTy::Symbol,
+                BarredTy::Keyword => TextTy::Keyword,
+            },
             contents: name,
         }))
     }
 
     fn parse_keyword(&mut self) -> Result<Atom, SexParserError> {
         self.inc_expect(':')?;
+        if self.at() == Some('|') {
+            return self.parse_barred(BarredTy::Keyword);
+        }
         let mut name = String::new();
         while let Some(ch) = self.at() {
             if !is_symbol_char(ch) {

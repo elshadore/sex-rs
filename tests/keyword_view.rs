@@ -1,4 +1,14 @@
-use sex::{Atom, AtomTy, KeywordView, Number, SexError};
+use sex::{Atom, AtomTy, KeywordView, Number, SexError, parse_atom};
+
+#[test]
+fn keyword_view_barred_keyword_key() {
+    let atom = parse_atom("(name :|my key| 5)").unwrap();
+    let list = atom.try_as_list().unwrap();
+    assert_eq!(list[0], Atom::symbol("name"));
+    let kv = KeywordView::from_slice(&list[1..]).unwrap();
+    assert!(kv.contains_key("my key"));
+    assert_eq!(kv.required::<i64>("my key").unwrap(), 5);
+}
 
 #[test]
 fn keyword_view_empty() {

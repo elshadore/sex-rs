@@ -30,6 +30,12 @@ pub enum HexError {
     NoChar,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum BarredTy {
+    Symbol,
+    Keyword,
+}
+
 #[derive(Debug)]
 pub enum SexParserError {
     UnexpectedEof {

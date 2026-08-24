@@ -9,6 +9,7 @@ Both symbols and strings have to be valid unicode characters.
     `|bar symbols|`
   - [x] Escaping with \\ (same set as strings, plus `\|`)
     `|bar \| symbols \\|`
+  - [x] Barred keywords: `:|foo bar|` (empty `:||` allowed)
   Keywords
   `:|keywords as well|`
 - [ ] Ensure Full Number Parsing

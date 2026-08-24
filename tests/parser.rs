@@ -563,6 +563,84 @@ fn bare_pipe_in_symbol_rejected() {
     assert!(parse_atom("foo|bar").is_err());
 }
 
+#[test]
+fn parse_barred_keyword_basic() {
+    assert_eq!(
+        parse_atom(":|foo bar|").unwrap(),
+        Atom::keyword("foo bar")
+    );
+}
+
+#[test]
+fn parse_barred_keyword_empty() {
+    assert_eq!(parse_atom(":||").unwrap(), Atom::keyword(""));
+}
+
+#[test]
+fn parse_barred_keyword_unicode_and_multiline() {
+    assert_eq!(parse_atom(":|日本 語|").unwrap(), Atom::keyword("日本 語"));
+    assert_eq!(parse_atom(":|a\nb|").unwrap(), Atom::keyword("a\nb"));
+}
+
+#[test]
+fn parse_barred_keyword_escapes() {
+    assert_eq!(
+        parse_atom(r#" :|a\|b| "#).unwrap(),
+        Atom::keyword("a|b")
+    );
+    assert_eq!(parse_atom(r#" :|\x41| "#).unwrap(), Atom::keyword("A"));
+    assert_eq!(
+        parse_atom(r#" :|\u{1F600}| "#).unwrap(),
+        Atom::keyword("\u{1F600}")
+    );
+}
+
+#[test]
+fn parse_barred_keyword_is_literal() {
+    assert_eq!(parse_atom(":|nil|").unwrap(), Atom::keyword("nil"));
+    assert_ne!(parse_atom(":|nil|").unwrap(), Atom::Nil);
+    assert_eq!(parse_atom(":|true|").unwrap(), Atom::keyword("true"));
+    assert_ne!(parse_atom(":|true|").unwrap(), Atom::True);
+    assert_eq!(parse_atom(":|123|").unwrap(), Atom::keyword("123"));
+}
+
+#[test]
+fn parse_barred_keyword_contains_delimiters() {
+    assert_eq!(parse_atom(":|(x)|").unwrap(), Atom::keyword("(x)"));
+    assert_eq!(parse_atom(r#" :|"s"| "#).unwrap(), Atom::keyword("\"s\""));
+}
+
+#[test]
+fn parse_barred_keyword_unknown_escape() {
+    let r = parse_listed(r#":|ab\qc|"#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::MalformedBarEscape { ch: 'q', .. })
+    ));
+}
+
+#[test]
+fn parse_barred_keyword_shares_hex_and_surrogate_errors() {
+    let r = parse_listed(r#":|\xzz|"#);
+    assert!(matches!(r, Err(SexParserError::MalformedHexEscape { .. })));
+    let r = parse_listed(r#":|\u{D800}|"#);
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeChar { value: 0xD800, .. })
+    ));
+}
+
+#[test]
+fn parse_barred_keyword_unterminated() {
+    let r = parse_listed(":|abc");
+    assert!(matches!(r, Err(SexParserError::UnterminatedBarSymbol { .. })));
+}
+
+#[test]
+fn bare_pipe_after_keyword_rejected() {
+    assert!(parse_atom(":foo|bar|").is_err());
+}
+
 
 #[test]
 fn parse_keyword_basic() {
