@@ -492,7 +492,8 @@ impl<R: BufRead> Parser<R> {
 }
 
 fn is_symbol_char(ch: char) -> bool {
-    ch.is_alphanumeric() || ch.is_ascii_graphic()
+    (ch.is_alphanumeric() || ch.is_ascii_graphic())
+        && (ch != '(' && ch != ')' && ch != ';' && ch != '"')
 }
 
 /// Parses multiple atoms/expressions from a string.
