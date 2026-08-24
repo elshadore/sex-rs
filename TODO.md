@@ -3,13 +3,12 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Add index to `Position`
+- [ ] Ensure Full Number Parsing
+  emulate rust or jsons number parsing rules
 - [ ] Nice Parser Errors like *compilation* buffer format
   - Prints line number, char number, full line print, error print.
   - Parser `Metadata` for file name 
   - Seperate Logical Parser Error that are `Copy` and `Clone`
-- [x] `;` Comments
-- [x] `true` and `false`
 - [ ] Full symbol processing
   All characters are valid even `.` or `'`, that are used for things in other lisps.
   Whitespace symbols:
@@ -18,11 +17,7 @@ Both symbols and strings have to be valid unicode characters.
   `|bar \| symbols \\|`
   Keywords
   `:|keywords as well|`
-- [ ] Figure out what to do with hexcodes
-  they should be converted to valid utf8 or whatever (read as extended ascii codes essentially)
-- [ ] Ensure Full Number Parsing
-  emulate rust or jsons number parsing rules
-- [ ] Read `example/example.rs`
+- [ ] Redo `example/example.rs`
   Use this add the base for the example in the README
 - [ ] Redo README
 - [ ] Serializer
@@ -34,3 +29,4 @@ Both symbols and strings have to be valid unicode characters.
 - [ ] Quality Check
 - [ ] Re Add Back in Tests
 - [ ] Look at Error Messages to see if they make sense.
+- [ ] Remove useless tests.
