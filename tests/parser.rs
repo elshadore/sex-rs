@@ -1,4 +1,4 @@
-use sex::{Atom, Number, SexParserError, parse_atom, parse_listed};
+use sex::{Atom, Number, SexParserAtomError, SexParserError, parse_atom, parse_listed};
 
 #[test]
 fn parse_bare_symbol() {
@@ -207,8 +207,12 @@ fn parse_float_zero() {
 }
 
 #[test]
-fn parse_trailing_dot_is_valid_float() {
-    assert_eq!(parse_atom("42.").unwrap(), Atom::Number(Number::Float(42.0)));
+fn parse_trailing_dot_is_invalid() {
+    let err = parse_atom("42.").unwrap_err();
+    assert!(matches!(
+        err,
+        SexParserAtomError::Generic(SexParserError::InvalidNumber { .. })
+    ));
 }
 
 #[test]
@@ -227,6 +231,82 @@ fn parse_number_with_letters_requires_whitespace() {
         err,
         SexParserError::ExpectedWhitespace { ch: 'a', .. }
     ));
+}
+
+#[test]
+fn parse_leading_zeros_invalid() {
+    assert!(parse_atom("007").is_err());
+    assert!(parse_atom("-01").is_err());
+    assert!(parse_atom("00").is_err());
+}
+
+#[test]
+fn parse_zero_forms() {
+    assert_eq!(parse_atom("0").unwrap(), Atom::Number(Number::Integer(0)));
+    assert_eq!(parse_atom("-0").unwrap(), Atom::Number(Number::Integer(0)));
+    assert_eq!(
+        parse_atom("0.5").unwrap(),
+        Atom::Number(Number::Float(0.5))
+    );
+    assert_eq!(
+        parse_atom("-0.5").unwrap(),
+        Atom::Number(Number::Float(-0.5))
+    );
+}
+
+#[test]
+fn parse_exponent_basic() {
+    assert_eq!(
+        parse_atom("1e5").unwrap(),
+        Atom::Number(Number::Float(100000.0))
+    );
+    assert_eq!(
+        parse_atom("1E5").unwrap(),
+        Atom::Number(Number::Float(100000.0))
+    );
+    assert_eq!(
+        parse_atom("1e+5").unwrap(),
+        Atom::Number(Number::Float(100000.0))
+    );
+    assert_eq!(
+        parse_atom("1e-5").unwrap(),
+        Atom::Number(Number::Float(0.00001))
+    );
+    assert_eq!(
+        parse_atom("-2.5e2").unwrap(),
+        Atom::Number(Number::Float(-250.0))
+    );
+}
+
+#[test]
+fn parse_exponent_is_float_even_if_integral() {
+    assert_eq!(
+        parse_atom("1e0").unwrap(),
+        Atom::Number(Number::Float(1.0))
+    );
+}
+
+#[test]
+fn parse_exponent_malformed() {
+    for input in ["1e", "1e+", "1e-", "1.e5", "42."] {
+        let err = parse_atom(input).unwrap_err();
+        assert!(
+            matches!(err, SexParserAtomError::Generic(SexParserError::InvalidNumber { .. })),
+            "expected InvalidNumber for {input}, got {err:?}"
+        );
+    }
+}
+
+#[test]
+fn parse_integer_overflow_is_invalid_number() {
+    let err = parse_atom("99999999999999999999").unwrap_err();
+    match err {
+        SexParserAtomError::Generic(SexParserError::InvalidNumber { pos }) => {
+            assert_eq!(pos.line, 1);
+            assert_eq!(pos.col, 1);
+        }
+        other => panic!("expected InvalidNumber, got {other:?}"),
+    }
 }
 
 #[test]

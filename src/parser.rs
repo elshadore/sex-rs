@@ -372,38 +372,93 @@ impl<R: BufRead> Parser<R> {
 
     fn parse_number(&mut self) -> Result<Atom, SexParserError> {
         let start = self.pos;
-
-        let mut buf = String::new();
-        if self.at() == Some('-') {
-            buf.push('-');
+        let negative = if self.at() == Some('-') {
             self.inc();
-        }
+            true
+        } else {
+            false
+        };
 
-        let mut has_dot = false;
-        while let Some(ch) = self.at() {
-            if ch.is_ascii_digit() {
-                buf.push(ch);
+        let mut mantissa: u64 = 0;
+        match self.at() {
+            Some('0') => {
                 self.inc();
-            } else if ch == '.' && !has_dot {
-                has_dot = true;
-                buf.push(ch);
-                self.inc();
-            } else {
-                break;
+                if self.at().is_some_and(|ch| ch.is_ascii_digit()) {
+                    return Err(SexParserError::new_invalid_number(start));
+                }
+            }
+            _ => {
+                self.take_digits(&mut mantissa, start)?;
             }
         }
 
-        if has_dot {
-            let n: f64 = buf
-                .parse()
-                .map_err(|_| SexParserError::new_invalid_number(start, buf.clone()))?;
-            Ok(Atom::Number(Number::Float(n)))
-        } else {
-            let n: i64 = buf
-                .parse()
-                .map_err(|_| SexParserError::new_invalid_number(start, buf.clone()))?;
-            Ok(Atom::Number(Number::Integer(n)))
+        let mut is_float = false;
+        let mut frac_digits: u32 = 0;
+        if self.at() == Some('.') {
+            self.inc();
+            is_float = true;
+            frac_digits = self.take_digits(&mut mantissa, start)?;
+            if frac_digits == 0 {
+                return Err(SexParserError::new_invalid_number(start));
+            }
         }
+
+        let mut exp: i32 = 0;
+        if self.at() == Some('e') || self.at() == Some('E') {
+            self.inc();
+            is_float = true;
+            let exp_negative = if self.at() == Some('-') {
+                self.inc();
+                true
+            } else {
+                if self.at() == Some('+') {
+                    self.inc();
+                }
+                false
+            };
+            let mut magnitude: u64 = 0;
+            if self.take_digits(&mut magnitude, start)? == 0 {
+                return Err(SexParserError::new_invalid_number(start));
+            }
+            let magnitude =
+                i32::try_from(magnitude).map_err(|_| SexParserError::new_invalid_number(start))?;
+            exp = if exp_negative { -magnitude } else { magnitude };
+        }
+
+        if !is_float {
+            let n: i64 = if negative {
+                if mantissa > (i64::MAX as u64) + 1 {
+                    return Err(SexParserError::new_invalid_number(start));
+                }
+                if mantissa == (i64::MAX as u64) + 1 {
+                    i64::MIN
+                } else {
+                    -(mantissa as i64)
+                }
+            } else {
+                i64::try_from(mantissa).map_err(|_| SexParserError::new_invalid_number(start))?
+            };
+            Ok(Atom::Number(Number::Integer(n)))
+        } else {
+            let sign = if negative { -1.0 } else { 1.0 };
+            let scale = 10f64.powi(exp - (frac_digits as i32));
+            Ok(Atom::Number(Number::Float(
+                sign * (mantissa as f64) * scale,
+            )))
+        }
+    }
+
+    fn take_digits(&mut self, mantissa: &mut u64, start: Position) -> Result<u32, SexParserError> {
+        let mut count: u32 = 0;
+        while let Some(digit) = self.at().and_then(|ch| ch.to_digit(10)) {
+            *mantissa = (*mantissa)
+                .checked_mul(10)
+                .and_then(|m| m.checked_add(digit as u64))
+                .ok_or_else(|| SexParserError::new_invalid_number(start))?;
+            self.inc();
+            count += 1;
+        }
+        Ok(count)
     }
 }
 

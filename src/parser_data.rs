@@ -76,7 +76,6 @@ pub enum SexParserError {
     },
     InvalidNumber {
         pos: Position,
-        value: String,
     },
     EmptyKeyword {
         pos: Position,
@@ -128,8 +127,8 @@ impl SexParserError {
         SexParserError::InvalidUnicodeChar { pos, value }
     }
 
-    pub fn new_invalid_number(pos: Position, value: String) -> Self {
-        SexParserError::InvalidNumber { pos, value }
+    pub fn new_invalid_number(pos: Position) -> Self {
+        SexParserError::InvalidNumber { pos }
     }
 
     pub fn new_empty_keyword(pos: Position) -> Self {
@@ -194,8 +193,8 @@ impl std::fmt::Display for SexParserError {
             SexParserError::MalformedUnicodeEscape { pos, value } => {
                 write!(f, "{}: malformed unicode escape sequence: {}", pos, value)
             }
-            SexParserError::InvalidNumber { pos, value } => {
-                write!(f, "{}: invalid number '{}'", pos, value)
+            SexParserError::InvalidNumber { pos } => {
+                write!(f, "{}: invalid number", pos)
             }
             SexParserError::EmptyKeyword { pos } => write!(f, "{}: empty keyword", pos),
             SexParserError::ExpectedWhitespace { pos, ch } => {
