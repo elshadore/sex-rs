@@ -38,7 +38,6 @@ pub enum SexParserError {
     UnterminatedList { pos: Position },
     UnterminatedString { pos: Position },
     InvalidEscape { pos: Position, ch: char },
-    InvalidHexEscape { pos: Position, value: String },
     InvalidUnicodeEscape { pos: Position, value: String },
     InvalidNumber { pos: Position, value: String },
     EmptyKeyword { pos: Position },
@@ -351,26 +350,18 @@ impl<R: BufRead> Parser<R> {
         }
     }
 
-    fn read_hex_digit(&mut self) -> Result<u32, SexParserError> {
+    fn read_hex_digit(&mut self) -> Result<u8, SexParserError> {
         match self.inc() {
-            Some(ch) if ch.is_ascii_hexdigit() => Ok(ch.to_digit(16).unwrap_or(0)),
+            Some(ch) if ch.is_ascii_hexdigit() => Ok(ch.to_digit(16).unwrap_or(0) as u8),
             Some(ch) => Err(self.invalid_hex_escape(format!("{ch}"))),
             None => Err(self.invalid_hex_escape(String::new())),
         }
     }
 
     fn read_hex_escape(&mut self) -> Result<char, SexParserError> {
-        let start = self.pos;
         let hi = self.read_hex_digit()?;
         let lo = self.read_hex_digit()?;
-        let value = (hi << 4) | lo;
-        if value > 0x7F {
-            return Err(SexParserError::InvalidHexEscape {
-                pos: start,
-                value: format!("{:02x}", value),
-            });
-        }
-        Ok(char::from_u32(value).unwrap())
+        Ok(char::from((hi << 4) | lo))
     }
 
     fn read_unicode_escape(&mut self) -> Result<char, SexParserError> {

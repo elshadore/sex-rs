@@ -349,12 +349,14 @@ fn parse_escape_hex_lowercase() {
 }
 
 #[test]
-fn parse_escape_hex_too_large() {
-    let r = parse_listed(r#""\x80""#);
-    assert!(matches!(
-        r,
-        Err(SexParserError::InvalidHexEscape { .. })
-    ));
+fn parse_escape_hex_full_byte_range() {
+    assert_eq!(parse_atom(r#""\x80""#).unwrap(), Atom::string("\u{80}"));
+    assert_eq!(parse_atom(r#""\xFF""#).unwrap(), Atom::string("ÿ"));
+    assert_eq!(parse_atom(r#""\xff""#).unwrap(), Atom::string("\u{ff}"));
+    assert_eq!(
+        parse_atom(r#""\xC3\xBF""#).unwrap(),
+        Atom::string("Ã¿")
+    );
 }
 
 #[test]

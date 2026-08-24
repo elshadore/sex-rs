@@ -15,6 +15,8 @@ Both symbols and strings have to be valid unicode characters.
   `:|keywords as well|`
 - [ ] Figure out what to do with hexcodes
   they should be converted to valid utf8 or whatever (read as extended ascii codes essentially)
+- [ ] Ensure Full Number Parsing
+  emulate rust or jsons number parsing rules
 - [ ] Read `example/example.rs`
   Use this add the base for the example in the README
 - [ ] Redo README
