@@ -45,7 +45,14 @@ pub enum SexParserError {
     UnterminatedString {
         pos: Position,
     },
+    UnterminatedBarSymbol {
+        pos: Position,
+    },
     MalformedStringEscape {
+        pos: Position,
+        ch: char,
+    },
+    MalformedBarEscape {
         pos: Position,
         ch: char,
     },
@@ -85,8 +92,14 @@ impl std::fmt::Display for SexParserError {
                 write!(f, "{}: unterminated list, expected ')'", pos)
             }
             SexParserError::UnterminatedString { pos } => write!(f, "{}: unterminated string", pos),
+            SexParserError::UnterminatedBarSymbol { pos } => {
+                write!(f, "{}: unterminated barred symbol, expected '|'", pos)
+            }
             SexParserError::MalformedStringEscape { pos, ch } => {
                 write!(f, "{}: malformed string escape sequence '\\{}'", pos, ch)
+            }
+            SexParserError::MalformedBarEscape { pos, ch } => {
+                write!(f, "{}: malformed barred symbol escape sequence '\\{}'", pos, ch)
             }
             SexParserError::MalformedHexEscape { pos, value } => match value {
                 MalformedHexCode::InvalidLeft { left } => {

@@ -142,6 +142,7 @@ impl<R: BufRead> Parser<R> {
             Some('(') => self.parse_list(),
             Some('"') => self.parse_string(),
             Some(':') => self.parse_keyword(),
+            Some('|') => self.parse_barred_symbol(),
             Some(ch) if ch == '-' && self.peek().map_or(false, |c| c.is_ascii_digit()) => {
                 self.parse_number()
             }
@@ -208,6 +209,38 @@ impl<R: BufRead> Parser<R> {
                 Some(ch) => s.push(ch),
             }
         }
+    }
+
+    fn parse_barred_symbol(&mut self) -> Result<Atom, SexParserError> {
+        self.inc_expect('|')?;
+        let mut name = String::new();
+        loop {
+            match self.inc() {
+                None => return Err(self.unterminated_bar_symbol()),
+                Some('|') => break,
+                Some('\\') => {
+                    let esc = match self.inc() {
+                        None => return Err(self.unterminated_bar_symbol()),
+                        Some('"') => '"',
+                        Some('|') => '|',
+                        Some('\\') => '\\',
+                        Some('n') => '\n',
+                        Some('t') => '\t',
+                        Some('r') => '\r',
+                        Some('0') => '\0',
+                        Some('x') => self.read_hex_escape()?,
+                        Some('u') => self.read_unicode_escape()?,
+                        Some(ch) => return Err(self.malformed_bar_escape(ch)),
+                    };
+                    name.push(esc);
+                }
+                Some(ch) => name.push(ch),
+            }
+        }
+        Ok(Atom::Text(Text {
+            ty: TextTy::Symbol,
+            contents: name,
+        }))
     }
 
     fn parse_keyword(&mut self) -> Result<Atom, SexParserError> {
@@ -398,6 +431,14 @@ impl<R: BufRead> Parser<R> {
         }
     }
 
+    fn unterminated_bar_symbol(&self) -> SexParserError {
+        SexParserError::UnterminatedBarSymbol { pos: self.pos }
+    }
+
+    fn malformed_bar_escape(&self, ch: char) -> SexParserError {
+        SexParserError::MalformedBarEscape { pos: self.pos, ch }
+    }
+
     fn empty_keyword(&self) -> SexParserError {
         SexParserError::EmptyKeyword { pos: self.pos }
     }
@@ -413,7 +454,7 @@ impl<R: BufRead> Parser<R> {
 
 fn is_symbol_char(ch: char) -> bool {
     (ch.is_alphanumeric() || ch.is_ascii_graphic())
-        && (ch != '(' && ch != ')' && ch != ';' && ch != '"')
+        && (ch != '(' && ch != ')' && ch != ';' && ch != '"' && ch != '|')
 }
 
 /// Parses multiple atoms/expressions from a string.

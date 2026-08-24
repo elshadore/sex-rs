@@ -5,10 +5,10 @@ Both symbols and strings have to be valid unicode characters.
 
 - [ ] Full symbol processing
   All characters are valid even `.` or `'`, that are used for things in other lisps.
-  Whitespace symbols:
-  `|bar symbols|`
-  Escaping with \\
-  `|bar \| symbols \\|`
+  - [x] Whitespace symbols:
+    `|bar symbols|`
+  - [x] Escaping with \\ (same set as strings, plus `\|`)
+    `|bar \| symbols \\|`
   Keywords
   `:|keywords as well|`
 - [ ] Ensure Full Number Parsing
@@ -26,7 +26,8 @@ Both symbols and strings have to be valid unicode characters.
 - [ ] Look into Serde and how it works
     wether we can integrate serde into sex
 - [ ] default in the declarative macro should use the Default trait if no value is provided
+- [ ] Look at *all* Error Messages to see if they make sense.
+- [ ] Test check.
+  - Ensure good coverage.
+  - Remove useless tests.
 - [ ] Quality Check
-- [ ] Re Add Back in Tests
-- [ ] Look at Error Messages to see if they make sense.
-- [ ] Remove useless tests.

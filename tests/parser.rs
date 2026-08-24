@@ -451,6 +451,120 @@ fn parse_escape_unicode_no_brace() {
 
 
 #[test]
+fn parse_barred_symbol_basic() {
+    assert_eq!(
+        parse_atom("|hello world|").unwrap(),
+        Atom::symbol("hello world")
+    );
+}
+
+#[test]
+fn parse_barred_symbol_empty() {
+    assert_eq!(parse_atom("||").unwrap(), Atom::symbol(""));
+}
+
+#[test]
+fn parse_barred_symbol_unicode() {
+    assert_eq!(parse_atom("|日本語|").unwrap(), Atom::symbol("日本語"));
+}
+
+#[test]
+fn parse_barred_symbol_multiline() {
+    assert_eq!(
+        parse_atom("|foo\nbar|").unwrap(),
+        Atom::symbol("foo\nbar")
+    );
+}
+
+#[test]
+fn parse_barred_symbol_contains_delimiters() {
+    assert_eq!(parse_atom("|(foo)|").unwrap(), Atom::symbol("(foo)"));
+    assert_eq!(
+        parse_atom(r#"|"quoted"|"#).unwrap(),
+        Atom::symbol("\"quoted\"")
+    );
+    assert_eq!(parse_atom("|;comment|").unwrap(), Atom::symbol(";comment"));
+    assert_eq!(parse_atom("|:kw|").unwrap(), Atom::symbol(":kw"));
+}
+
+#[test]
+fn parse_barred_symbol_is_literal() {
+    assert_eq!(parse_atom("|nil|").unwrap(), Atom::symbol("nil"));
+    assert_ne!(parse_atom("|nil|").unwrap(), Atom::Nil);
+    assert_eq!(parse_atom("|true|").unwrap(), Atom::symbol("true"));
+    assert_ne!(parse_atom("|true|").unwrap(), Atom::True);
+    assert_eq!(parse_atom("|123|").unwrap(), Atom::symbol("123"));
+}
+
+#[test]
+fn parse_barred_symbol_in_list() {
+    let atoms = parse_listed("(a |b c| d)").unwrap();
+    assert_eq!(
+        atoms,
+        vec![Atom::List(vec![
+            Atom::symbol("a"),
+            Atom::symbol("b c"),
+            Atom::symbol("d"),
+        ])]
+    );
+}
+
+#[test]
+fn parse_barred_symbol_escapes() {
+    assert_eq!(parse_atom("|a\\|b|").unwrap(), Atom::symbol("a|b"));
+    assert_eq!(parse_atom("|a\\\\b|").unwrap(), Atom::symbol("a\\b"));
+    assert_eq!(parse_atom(r#"|a\"b|"#).unwrap(), Atom::symbol("a\"b"));
+    assert_eq!(parse_atom("|a\\nb|").unwrap(), Atom::symbol("a\nb"));
+    assert_eq!(parse_atom("|a\\tb|").unwrap(), Atom::symbol("a\tb"));
+    assert_eq!(parse_atom("|a\\rb|").unwrap(), Atom::symbol("a\rb"));
+    assert_eq!(parse_atom("|a\\0b|").unwrap(), Atom::symbol("a\u{0}b"));
+    assert_eq!(parse_atom("|\\x41|").unwrap(), Atom::symbol("A"));
+    assert_eq!(parse_atom("|\\u{1F600}|").unwrap(), Atom::symbol("\u{1F600}"));
+}
+
+#[test]
+fn parse_barred_symbol_unknown_escape() {
+    let r = parse_listed("|ab\\qc|");
+    assert!(matches!(
+        r,
+        Err(SexParserError::MalformedBarEscape { ch: 'q', .. })
+    ));
+}
+
+#[test]
+fn parse_barred_symbol_bad_hex_shares_error() {
+    let r = parse_listed("|\\xzz|");
+    assert!(matches!(r, Err(SexParserError::MalformedHexEscape { .. })));
+}
+
+#[test]
+fn parse_barred_symbol_surrogate_shares_error() {
+    let r = parse_listed("|\\u{D800}|");
+    assert!(matches!(
+        r,
+        Err(SexParserError::InvalidUnicodeChar { value: 0xD800, .. })
+    ));
+}
+
+#[test]
+fn parse_barred_symbol_unterminated() {
+    let r = parse_listed("|abc");
+    assert!(matches!(r, Err(SexParserError::UnterminatedBarSymbol { .. })));
+}
+
+#[test]
+fn parse_barred_symbol_unterminated_after_escape() {
+    let r = parse_listed("|abc\\");
+    assert!(matches!(r, Err(SexParserError::UnterminatedBarSymbol { .. })));
+}
+
+#[test]
+fn bare_pipe_in_symbol_rejected() {
+    assert!(parse_atom("foo|bar").is_err());
+}
+
+
+#[test]
 fn parse_keyword_basic() {
     assert_eq!(parse_atom(":foo").unwrap(), Atom::keyword("foo"));
 }
