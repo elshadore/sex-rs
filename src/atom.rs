@@ -7,10 +7,11 @@ pub enum AtomTy {
     Text,
     Integer,
     Float,
-    Nil,
     List,
+    Nil,
     True,
     False,
+    Logic,
 }
 
 impl fmt::Display for AtomTy {
@@ -18,13 +19,14 @@ impl fmt::Display for AtomTy {
         match self {
             AtomTy::Symbol => write!(f, "symbol"),
             AtomTy::Keyword => write!(f, "keyword"),
-            AtomTy::Text => write!(f, "text (symbol, keyword, or string)"),
+            AtomTy::Text => write!(f, "text (symbol || keyword || string)"),
             AtomTy::Integer => write!(f, "integer"),
             AtomTy::Float => write!(f, "float"),
             AtomTy::Nil => write!(f, "nil"),
             AtomTy::List => write!(f, "list"),
             AtomTy::True => write!(f, "true"),
             AtomTy::False => write!(f, "false"),
+            AtomTy::Logic => write!(f, "logic (true || false || nil)"),
         }
     }
 }

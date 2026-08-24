@@ -91,8 +91,13 @@ impl FromSex for f32 {
 impl FromSex for bool {
     fn from_sex(atom: &Atom) -> Result<Self, SexError> {
         match atom {
+            Atom::True => Ok(true),
+            Atom::False => Ok(false),
             Atom::Nil => Ok(false),
-            _ => Ok(true),
+            _ => Err(SexError::TypeError {
+                expected: AtomTy::Logic,
+                found: atom.clone(),
+            }),
         }
     }
 }
