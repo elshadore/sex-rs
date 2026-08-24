@@ -405,7 +405,10 @@ fn parse_escape_unicode_surrogate() {
     let r = parse_listed(r#""\u{D800}""#);
     assert!(matches!(
         r,
-        Err(SexParserError::MalformedUnicodeEscape { .. })
+        Err(SexParserError::InvalidUnicodeChar {
+            value: 0xD800,
+            ..
+        })
     ));
 }
 
@@ -414,8 +417,27 @@ fn parse_escape_unicode_too_large() {
     let r = parse_listed(r#""\u{110000}""#);
     assert!(matches!(
         r,
-        Err(SexParserError::MalformedUnicodeEscape { .. })
+        Err(SexParserError::InvalidUnicodeChar {
+            value: 0x110000,
+            ..
+        })
     ));
+}
+
+#[test]
+fn parse_escape_unicode_boundary_scalars() {
+    assert_eq!(
+        parse_atom(r#""\u{D7FF}""#).unwrap(),
+        Atom::string("\u{D7FF}")
+    );
+    assert_eq!(
+        parse_atom(r#""\u{E000}""#).unwrap(),
+        Atom::string("\u{E000}")
+    );
+    assert_eq!(
+        parse_atom(r#""\u{10FFFF}""#).unwrap(),
+        Atom::string("\u{10FFFF}")
+    );
 }
 
 #[test]
