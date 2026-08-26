@@ -1,1 +1,1 @@
-(1 2 3 foo bar "foo \xFF woo")
+(1 2 3 foo |foo bar| "foo \xFF woo")

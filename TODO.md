@@ -3,6 +3,11 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
+- [ ] List Type
+  - Immutable
+  - [ ] List Builder Type
+    - Mutable
+  - Review List View and Keyword View
 - [ ] Printer
   - Normal
   - Pretty Printing
