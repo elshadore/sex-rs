@@ -54,6 +54,14 @@ impl<'a> IntoIterator for &'a List {
     }
 }
 
+impl FromIterator<Atom> for List {
+    fn from_iter<I: IntoIterator<Item = Atom>>(iter: I) -> Self {
+        List {
+            vec: iter.into_iter().collect(),
+        }
+    }
+}
+
 impl From<Vec<Atom>> for List {
     fn from(vec: Vec<Atom>) -> Self {
         List { vec }
@@ -86,18 +94,18 @@ impl ListBuilder {
     pub fn build(self) -> List {
         List { vec: self.vec }
     }
-    
-    pub fn len(&self) -> usize {
-        self.vec.len()
-    }
-    
-    pub fn is_empty(&self) -> bool {
-        self.vec.is_empty()
-    }
 }
 
 impl From<Vec<Atom>> for ListBuilder {
     fn from(vec: Vec<Atom>) -> Self {
         ListBuilder { vec }
+    }
+}
+
+impl FromIterator<Atom> for ListBuilder {
+    fn from_iter<I: IntoIterator<Item = Atom>>(iter: I) -> Self {
+        ListBuilder {
+            vec: iter.into_iter().collect(),
+        }
     }
 }
