@@ -1,6 +1,8 @@
 use crate::printer;
 use std::fmt;
 
+use crate::list::List;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AtomTy {
     Symbol,
@@ -102,8 +104,6 @@ pub struct Text {
     pub ty: TextTy,
     pub contents: String,
 }
-
-pub type List = Vec<Atom>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Atom {

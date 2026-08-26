@@ -6,7 +6,8 @@ mod printer;
 mod sex_trait;
 mod view;
 
-pub use atom::{Atom, AtomTy, List, Number, SexError, Text, TextTy};
+pub use atom::{Atom, AtomTy, Number, SexError, Text, TextTy};
+pub use list::{List, ListBuilder};
 pub use parser::{
     parse_expression_reader, parse_expression_str, parse_exprlist_reader, parse_exprlist_str,
 };

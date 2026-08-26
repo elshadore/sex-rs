@@ -1,4 +1,4 @@
-use sex::{Atom, Number};
+use sex::{List, Atom, Number};
 
 #[test]
 fn nil_is_nil() {
@@ -53,7 +53,7 @@ fn other_atoms_are_not_logic() {
         Atom::keyword("false"),
         Atom::string("nil"),
         Atom::Number(Number::Integer(1)),
-        Atom::List(vec![]),
+        Atom::List(List::from(vec![])),
     ] {
         assert!(!a.is_true());
         assert!(!a.is_falsey());
@@ -122,7 +122,7 @@ fn float_accessors() {
 
 #[test]
 fn list_accessors() {
-    let inner = vec![Atom::symbol("a")];
+    let inner = List::from(vec![Atom::symbol("a")]);
     let a = Atom::List(inner.clone());
     assert!(a.is_list());
     assert_eq!(a.as_list(), Some(&inner));
@@ -130,7 +130,7 @@ fn list_accessors() {
 
 #[test]
 fn list_is_empty_for_empty_list() {
-    let a = Atom::List(vec![]);
+    let a = Atom::List(List::from(vec![]));
     assert!(a.is_list());
     assert_eq!(a.as_list().map(|l| l.len()), Some(0));
 }

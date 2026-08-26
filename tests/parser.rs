@@ -1,4 +1,4 @@
-use sex::{Atom, Number, SexParserAtomError, SexParserError, SexParserErrorKind, parse_expression_str, parse_exprlist_str};
+use sex::{List, Atom, Number, SexParserAtomError, SexParserError, SexParserErrorKind, parse_expression_str, parse_exprlist_str};
 
 #[test]
 fn parse_bare_symbol() {
@@ -104,19 +104,19 @@ fn parse_false() {
 #[test]
 fn parse_true_in_list() {
     let atoms = parse_exprlist_str("(true)", None).unwrap();
-    assert_eq!(atoms, vec![Atom::List(vec![Atom::True])]);
+    assert_eq!(atoms, List::from(vec![Atom::List(List::from(vec![Atom::True]))]));
 }
 
 #[test]
 fn parse_false_in_list() {
     let atoms = parse_exprlist_str("(false)", None).unwrap();
-    assert_eq!(atoms, vec![Atom::List(vec![Atom::False])]);
+    assert_eq!(atoms, List::from(vec![Atom::List(List::from(vec![Atom::False]))]));
 }
 
 #[test]
 fn parse_logic_values_listed() {
     let atoms = parse_exprlist_str("true false nil", None).unwrap();
-    assert_eq!(atoms, vec![Atom::True, Atom::False, Atom::Nil]);
+    assert_eq!(atoms, List::from(vec![Atom::True, Atom::False, Atom::Nil]));
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn parse_logic_values_in_list() {
     let atoms = parse_exprlist_str("(true false nil)", None).unwrap();
     assert_eq!(
         atoms,
-        vec![Atom::List(vec![Atom::True, Atom::False, Atom::Nil])]
+        List::from(vec![Atom::List(List::from(vec![Atom::True, Atom::False, Atom::Nil]))])
     );
 }
 
@@ -150,7 +150,7 @@ fn parse_nil() {
 #[test]
 fn parse_nil_in_list() {
     let atoms = parse_exprlist_str("(nil)", None).unwrap();
-    assert_eq!(atoms, vec![Atom::List(vec![Atom::Nil])]);
+    assert_eq!(atoms, List::from(vec![Atom::List(List::from(vec![Atom::Nil]))]));
 }
 
 
@@ -575,11 +575,11 @@ fn parse_barred_symbol_in_list() {
     let atoms = parse_exprlist_str("(a |b c| d)", None).unwrap();
     assert_eq!(
         atoms,
-        vec![Atom::List(vec![
+        List::from(vec![Atom::List(List::from(vec![
             Atom::symbol("a"),
             Atom::symbol("b c"),
             Atom::symbol("d"),
-        ])]
+        ]))])
     );
 }
 
@@ -735,14 +735,14 @@ fn parse_empty_keyword() {
 
 #[test]
 fn parse_empty_list() {
-    assert_eq!(parse_expression_str("()", None).unwrap(), Atom::List(vec![]));
+    assert_eq!(parse_expression_str("()", None).unwrap(), Atom::List(List::from(vec![])));
 }
 
 #[test]
 fn parse_list_one_element() {
     assert_eq!(
         parse_expression_str("(42)", None).unwrap(),
-        Atom::List(vec![Atom::Number(Number::Integer(42))])
+        Atom::List(List::from(vec![Atom::Number(Number::Integer(42))]))
     );
 }
 
@@ -750,11 +750,11 @@ fn parse_list_one_element() {
 fn parse_list_multiple_elements() {
     assert_eq!(
         parse_expression_str("(a b c)", None).unwrap(),
-        Atom::List(vec![
+        Atom::List(List::from(vec![
             Atom::symbol("a"),
             Atom::symbol("b"),
             Atom::symbol("c"),
-        ])
+        ]))
     );
 }
 
@@ -762,10 +762,10 @@ fn parse_list_multiple_elements() {
 fn parse_nested_list() {
     assert_eq!(
         parse_expression_str("(a (b c))", None).unwrap(),
-        Atom::List(vec![
+        Atom::List(List::from(vec![
             Atom::symbol("a"),
-            Atom::List(vec![Atom::symbol("b"), Atom::symbol("c")]),
-        ])
+            Atom::List(List::from(vec![Atom::symbol("b"), Atom::symbol("c")])),
+        ]))
     );
 }
 
@@ -774,9 +774,9 @@ fn parse_deeply_nested_list() {
     let result = parse_expression_str("((((nil))))", None).unwrap();
     assert_eq!(
         result,
-        Atom::List(vec![Atom::List(vec![Atom::List(vec![Atom::List(vec![
+        Atom::List(List::from(vec![Atom::List(List::from(vec![Atom::List(List::from(vec![Atom::List(List::from(vec![
             Atom::Nil
-        ])])])])
+        ]))]))]))]))
     );
 }
 
@@ -808,7 +808,7 @@ fn parse_with_tabs_and_newlines() {
     let input = "\n\t(a\n\tb\n)";
     assert_eq!(
         parse_expression_str(input, None).unwrap(),
-        Atom::List(vec![Atom::symbol("a"), Atom::symbol("b")])
+        Atom::List(List::from(vec![Atom::symbol("a"), Atom::symbol("b")]))
     );
 }
 
@@ -818,11 +818,11 @@ fn parse_multiple_atoms() {
     let atoms = parse_exprlist_str("a b c", None).unwrap();
     assert_eq!(
         atoms,
-        vec![
+        List::from(vec![
             Atom::symbol("a"),
             Atom::symbol("b"),
             Atom::symbol("c"),
-        ]
+        ])
     );
 }
 
@@ -831,11 +831,11 @@ fn parse_multiple_mixed() {
     let atoms = parse_exprlist_str("42 :key \"str\"", None).unwrap();
     assert_eq!(
         atoms,
-        vec![
+        List::from(vec![
             Atom::Number(Number::Integer(42)),
             Atom::keyword("key"),
             Atom::string("str"),
-        ]
+        ])
     );
 }
 

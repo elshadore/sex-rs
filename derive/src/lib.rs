@@ -153,7 +153,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                     if is_complex_type {
                         quote! {
                             let #field_name: #field_ty = sex::FromSex::from_sex(
-                                &sex::Atom::List(rest.to_vec())
+                                &sex::Atom::List(sex::List::from_slice(rest))
                             )?;
                             Ok(#name::#variant_name(#field_name))
                         }
@@ -269,7 +269,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                 if list.is_empty() {
                     return Err(sex::SexError::TypeError {
                         expected: sex::AtomTy::List,
-                        found: sex::Atom::List(vec![]),
+                        found: sex::Atom::List(sex::List::from(vec![])),
                     });
                 }
                 

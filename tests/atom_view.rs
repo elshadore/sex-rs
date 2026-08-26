@@ -1,4 +1,4 @@
-use sex::{Atom, AtomView, Number, SexError};
+use sex::{List, Atom, AtomView, Number, SexError};
 
 #[test]
 fn empty_view() {
@@ -89,7 +89,7 @@ fn remaining_slice_after_consumption() {
 
 #[test]
 fn enter_list_empty() {
-    let atoms = [Atom::List(vec![])];
+    let atoms = [Atom::List(List::from(vec![]))];
     let mut v = AtomView::new(&atoms);
     let inner = v.enter_list().unwrap();
     assert!(inner.is_finished());
@@ -98,7 +98,7 @@ fn enter_list_empty() {
 
 #[test]
 fn enter_list_with_elements() {
-    let atoms = [Atom::List(vec![Atom::symbol("a"), Atom::symbol("b")])];
+    let atoms = [Atom::List(List::from(vec![Atom::symbol("a"), Atom::symbol("b")]))];
     let mut v = AtomView::new(&atoms);
     let mut inner = v.enter_list().unwrap();
     assert_eq!(inner.pop(), Some(&Atom::symbol("a")));

@@ -1,5 +1,6 @@
-use crate::atom::{Atom, List, Number, Text, TextTy};
+use crate::atom::{Atom, Number, Text, TextTy};
 use crate::err;
+use crate::list::{List, ListBuilder};
 use crate::parser_data::*;
 use std::io::{BufRead, BufReader, Cursor, Read};
 
@@ -29,7 +30,7 @@ fn skip_whitespace<R: BufRead>(p: &mut Parser<R>) -> bool {
 fn read_list<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     p.try_inc('(')?;
 
-    let mut list: List = Vec::new();
+    let mut list = ListBuilder::new();
     let mut first: bool = true;
     let mut whitespace = skip_whitespace(p);
 
@@ -50,7 +51,7 @@ fn read_list<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
         whitespace = skip_whitespace(p);
         first = false;
     }
-    Ok(Atom::List(list))
+    Ok(Atom::List(list.build()))
 }
 
 fn read_hex_digit<R: BufRead>(p: &mut Parser<R>) -> Result<u8, HexError> {
@@ -353,7 +354,7 @@ fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
 }
 
 fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserError> {
-    let mut atoms = Vec::new();
+    let mut atoms = ListBuilder::new();
     let mut whitespace: bool = true;
 
     skip_whitespace(p);
@@ -369,7 +370,7 @@ fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserError>
         whitespace = skip_whitespace(p);
     }
 
-    Ok(atoms)
+    Ok(atoms.build())
 }
 
 fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserAtomError> {

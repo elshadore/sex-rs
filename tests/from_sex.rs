@@ -1,4 +1,4 @@
-use sex::{Atom, AtomTy, FromSex, Number, SexError};
+use sex::{List, Atom, AtomTy, FromSex, Number, SexError};
 
 
 #[test]
@@ -23,7 +23,7 @@ fn from_sex_string_err_on_number() {
 
 #[test]
 fn from_sex_string_err_on_list() {
-    assert!(String::from_sex(&Atom::List(vec![])).is_err());
+    assert!(String::from_sex(&Atom::List(List::from(vec![]))).is_err());
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn from_sex_bool_errs_on_non_logic() {
         Atom::keyword("x"),
         Atom::string("x"),
         Atom::Number(Number::Integer(0)),
-        Atom::List(vec![]),
+        Atom::List(List::from(vec![])),
     ] {
         let err = bool::from_sex(&atom).unwrap_err();
         match err {
@@ -165,7 +165,7 @@ fn from_sex_option_some() {
 
 #[test]
 fn from_sex_option_inside_list() {
-    let list = Atom::List(vec![Atom::Number(Number::Integer(1)), Atom::Nil]);
+    let list = Atom::List(List::from(vec![Atom::Number(Number::Integer(1)), Atom::Nil]));
     let r: Vec<Option<i64>> = Vec::from_sex(&list).unwrap();
     assert_eq!(r, vec![Some(1), None]);
 }
@@ -173,17 +173,17 @@ fn from_sex_option_inside_list() {
 
 #[test]
 fn from_sex_vec_empty() {
-    let r: Vec<i64> = Vec::from_sex(&Atom::List(vec![])).unwrap();
+    let r: Vec<i64> = Vec::from_sex(&Atom::List(List::from(vec![]))).unwrap();
     assert!(r.is_empty());
 }
 
 #[test]
 fn from_sex_vec_integers() {
-    let list = Atom::List(vec![
+    let list = Atom::List(List::from(vec![
         Atom::Number(Number::Integer(10)),
         Atom::Number(Number::Integer(20)),
         Atom::Number(Number::Integer(30)),
-    ]);
+    ]));
     let r: Vec<i64> = Vec::from_sex(&list).unwrap();
     assert_eq!(r, vec![10, 20, 30]);
 }
@@ -196,7 +196,7 @@ fn from_sex_vec_err_on_non_list() {
 
 #[test]
 fn from_sex_vec_type_error_inside() {
-    let list = Atom::List(vec![Atom::Number(Number::Integer(1)), Atom::symbol("bad")]);
+    let list = Atom::List(List::from(vec![Atom::Number(Number::Integer(1)), Atom::symbol("bad")]));
     let r: Result<Vec<i64>, _> = Vec::from_sex(&list);
     assert!(r.is_err());
 }
