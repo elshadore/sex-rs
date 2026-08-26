@@ -45,7 +45,7 @@ fn read_list<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
             }
             Some(c) => {
                 if !first && !whitespace {
-                    return Err(p.error(p.pos, SexParserErrorKind::ExpectedWhitespace { ch: c }));
+                    return Err(p.error(p.pos, SexParserErrorKind::ExpectedWhitespace(c)));
                 }
                 list.push(read_atom(p)?);
             }
@@ -70,31 +70,25 @@ fn read_hex_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserError
             Ok(lo) => Ok(char::from((hi << 4) | lo)),
             Err(HexError::Invalid(right)) => Err(p.error(
                 p.pos,
-                SexParserErrorKind::MalformedHexEscape {
-                    value: MalformedHexCode::InvalidRight {
-                        left: hi.into(),
-                        right,
-                    },
-                },
+                SexParserErrorKind::MalformedHexEscape(MalformedHexCode::InvalidRight {
+                    left: hi.into(),
+                    right,
+                }),
             )),
             Err(HexError::NoChar) => Err(p.error(
                 p.pos,
-                SexParserErrorKind::MalformedHexEscape {
-                    value: MalformedHexCode::MissingRight { left: hi.into() },
-                },
+                SexParserErrorKind::MalformedHexEscape(MalformedHexCode::MissingRight {
+                    left: hi.into(),
+                }),
             )),
         },
         Err(HexError::Invalid(left)) => Err(p.error(
             p.pos,
-            SexParserErrorKind::MalformedHexEscape {
-                value: MalformedHexCode::InvalidLeft { left },
-            },
+            SexParserErrorKind::MalformedHexEscape(MalformedHexCode::InvalidLeft { left }),
         )),
         Err(HexError::NoChar) => Err(p.error(
             p.pos,
-            SexParserErrorKind::MalformedHexEscape {
-                value: MalformedHexCode::MissingLeft,
-            },
+            SexParserErrorKind::MalformedHexEscape(MalformedHexCode::MissingLeft),
         )),
     }
 }
@@ -105,11 +99,11 @@ fn read_unicode_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserE
     match p.inc() {
         Some(c) => {
             if c != '{' {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape { value: c }));
+                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape(c)));
             }
         }
         None => {
-            return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape { value: '\0' }));
+            return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape('\0')));
         }
     }
     loop {
@@ -120,22 +114,22 @@ fn read_unicode_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserE
                 digits += 1;
             }
             Some(ch) if ch.is_ascii_hexdigit() => {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape { value: ch }));
+                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape(ch)));
             }
             Some(ch) => {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape { value: ch }));
+                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape(ch)));
             }
             None => {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape { value: '\0' }));
+                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape('\0')));
             }
         }
     }
     if digits == 0 {
-        return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape { value: '\0' }));
+        return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape('\0')));
     }
     match char::from_u32(value) {
         Some(ch) => Ok(ch),
-        None => Err(p.error(p.pos, SexParserErrorKind::InvalidUnicodeChar { value })),
+        None => Err(p.error(p.pos, SexParserErrorKind::InvalidUnicodeChar(value))),
     }
 }
 
@@ -163,7 +157,7 @@ fn read_string<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
                     Some('x') => read_hex_escape(p)?,
                     Some('u') => read_unicode_escape(p)?,
                     Some(ch) => {
-                        return Err(p.error(p.pos, SexParserErrorKind::MalformedStringEscape { ch }));
+                        return Err(p.error(p.pos, SexParserErrorKind::MalformedStringEscape(ch)));
                     }
                 };
                 s.push(esc);
@@ -193,7 +187,7 @@ fn read_barred<R: BufRead>(p: &mut Parser<R>, ty: BarredTy) -> Result<Atom, SexP
                     Some('x') => read_hex_escape(p)?,
                     Some('u') => read_unicode_escape(p)?,
                     Some(ch) => {
-                        return Err(p.error(p.pos, SexParserErrorKind::MalformedBarEscape { ch }));
+                        return Err(p.error(p.pos, SexParserErrorKind::MalformedBarEscape(ch)));
                     }
                 };
                 name.push(esc);
@@ -345,7 +339,8 @@ fn read_number<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
                 -(mantissa as i64)
             }
         } else {
-            i64::try_from(mantissa).map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?
+            i64::try_from(mantissa)
+                .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?
         };
         Ok(Atom::Number(Number::Integer(n)))
     }
@@ -361,7 +356,7 @@ fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
         Some(ch) if ch == '-' && p.peek().is_some_and(|c| c.is_ascii_digit()) => read_number(p),
         Some(ch) if ch.is_ascii_digit() => read_number(p),
         Some(ch) if is_symbol_char(ch) => read_symbol(p),
-        Some(ch) => Err(p.error(p.pos, SexParserErrorKind::UnexpectedChar { ch })),
+        Some(ch) => Err(p.error(p.pos, SexParserErrorKind::UnexpectedChar(ch))),
     }
 }
 
@@ -378,9 +373,7 @@ fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserError>
         if !whitespace {
             return Err(p.error(
                 p.pos,
-                SexParserErrorKind::ExpectedWhitespace {
-                    ch: p.at().unwrap_or('\0'),
-                },
+                SexParserErrorKind::ExpectedWhitespace(p.at().unwrap_or('\0')),
             ));
         }
         atoms.push(read_atom(p)?);
@@ -395,7 +388,10 @@ fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserAtom
     let result = read_atom(p)?;
     skip_whitespace(p);
     if !p.is_finished() {
-        return Err(SexParserAtomError::new_expected_single_atom(p.pos, p.file.clone()));
+        return Err(SexParserAtomError::new_expected_single_atom(
+            p.pos,
+            p.file.clone(),
+        ));
     }
     Ok(result)
 }
@@ -407,7 +403,10 @@ pub fn parse_exprlist_str(input: impl AsRef<str>) -> Result<List, SexParserError
     parse_exprlist(&mut parser)
 }
 
-pub fn parse_exprlist_file(input: impl AsRef<str>, file: impl Into<String>) -> Result<List, SexParserError> {
+pub fn parse_exprlist_file(
+    input: impl AsRef<str>,
+    file: impl Into<String>,
+) -> Result<List, SexParserError> {
     let s = input.as_ref();
     let cursor = Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor);
@@ -428,7 +427,10 @@ pub fn parse_expression_str(input: impl AsRef<str>) -> Result<Atom, SexParserAto
     parse_expression(&mut parser)
 }
 
-pub fn parse_expression_file(input: impl AsRef<str>, file: impl Into<String>) -> Result<Atom, SexParserAtomError> {
+pub fn parse_expression_file(
+    input: impl AsRef<str>,
+    file: impl Into<String>,
+) -> Result<Atom, SexParserAtomError> {
     let s = input.as_ref();
     let cursor = Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor);

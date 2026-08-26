@@ -74,14 +74,26 @@ impl<R: BufRead> Parser<R> {
 
     pub fn try_inc(&mut self, expected: char) -> Result<(), SexParserError> {
         match self.inc() {
-            Some(ch) if ch == expected => Ok(()),
-            Some(ch) => Err(SexParserError::new_unexpected_char(self.pos, ch, self.file.clone())),
-            None => Err(SexParserError::new_unexpected_eof(self.pos, self.file.clone())),
+            Some(c) if c == expected => Ok(()),
+            Some(found) => Err(SexParserError {
+                pos: self.pos,
+                file: self.file.clone(),
+                kind: SexParserErrorKind::ExpectedChar { expected, found },
+            }),
+            None => Err(SexParserError {
+                pos: self.pos,
+                file: self.file.clone(),
+                kind: SexParserErrorKind::UnexpectedEof,
+            }),
         }
     }
 
     pub fn error(&self, pos: Position, kind: SexParserErrorKind) -> SexParserError {
-        SexParserError { pos, file: self.file.clone(), kind }
+        SexParserError {
+            pos,
+            file: self.file.clone(),
+            kind,
+        }
     }
 }
 
@@ -123,6 +135,24 @@ pub enum BarredTy {
     Keyword,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SexParserErrorKind {
+    UnexpectedEof,
+    UnexpectedChar(char),
+    ExpectedChar { expected: char, found: char },
+    UnterminatedList,
+    UnterminatedString,
+    UnterminatedBarSymbol,
+    MalformedStringEscape(char),
+    MalformedBarEscape(char),
+    MalformedHexEscape(MalformedHexCode),
+    MalformedUnicodeEscape(char),
+    InvalidUnicodeChar(u32),
+    InvalidNumber,
+    EmptyKeyword,
+    ExpectedWhitespace(char),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SexParserError {
     pub pos: Position,
@@ -130,93 +160,23 @@ pub struct SexParserError {
     pub kind: SexParserErrorKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SexParserErrorKind {
-    UnexpectedEof,
-    UnexpectedChar { ch: char },
-    UnterminatedList,
-    UnterminatedString,
-    UnterminatedBarSymbol,
-    MalformedStringEscape { ch: char },
-    MalformedBarEscape { ch: char },
-    MalformedHexEscape { value: MalformedHexCode },
-    MalformedUnicodeEscape { value: char },
-    InvalidUnicodeChar { value: u32 },
-    InvalidNumber,
-    EmptyKeyword,
-    ExpectedWhitespace { ch: char },
-}
-
-impl SexParserError {
-    pub fn new_unexpected_eof(pos: Position, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::UnexpectedEof }
-    }
-
-    pub fn new_unexpected_char(pos: Position, ch: char, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::UnexpectedChar { ch } }
-    }
-
-    pub fn new_unterminated_list(pos: Position, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::UnterminatedList }
-    }
-
-    pub fn new_unterminated_string(pos: Position, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::UnterminatedString }
-    }
-
-    pub fn new_unterminated_bar_symbol(pos: Position, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::UnterminatedBarSymbol }
-    }
-
-    pub fn new_malformed_string_escape(pos: Position, ch: char, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::MalformedStringEscape { ch } }
-    }
-
-    pub fn new_malformed_bar_escape(pos: Position, ch: char, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::MalformedBarEscape { ch } }
-    }
-
-    pub fn new_malformed_hex_escape(pos: Position, value: MalformedHexCode, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::MalformedHexEscape { value } }
-    }
-
-    pub fn new_malformed_unicode_escape(pos: Position, value: char, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::MalformedUnicodeEscape { value } }
-    }
-
-    pub fn new_invalid_unicode_char(pos: Position, value: u32, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::InvalidUnicodeChar { value } }
-    }
-
-    pub fn new_invalid_number(pos: Position, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::InvalidNumber }
-    }
-
-    pub fn new_empty_keyword(pos: Position, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::EmptyKeyword }
-    }
-
-    pub fn new_expected_whitespace(pos: Position, ch: char, file: Option<String>) -> Self {
-        SexParserError { pos, file, kind: SexParserErrorKind::ExpectedWhitespace { ch } }
-    }
-
-    pub fn display(&self) -> impl std::fmt::Display + '_ {
-        ErrorDisplay(self)
-    }
-}
-
-struct ErrorDisplay<'a>(&'a SexParserError);
-
-impl std::fmt::Display for ErrorDisplay<'_> {
+impl std::fmt::Display for SexParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let SexParserError { pos, file, kind } = self.0;
+        let SexParserError { pos, file, kind } = self;
         if let Some(file) = file {
             write!(f, "{}:", file)?;
         }
         match kind {
             SexParserErrorKind::UnexpectedEof => write!(f, "{}: unexpected EOF", pos),
-            SexParserErrorKind::UnexpectedChar { ch } => {
+            SexParserErrorKind::UnexpectedChar(ch) => {
                 write!(f, "{}: unexpected character '{}'", pos, ch)
+            }
+            SexParserErrorKind::ExpectedChar { expected, found } => {
+                write!(
+                    f,
+                    "{}: expected the character: '{}', found: '{}'",
+                    pos, expected, found
+                )
             }
             SexParserErrorKind::UnterminatedList => {
                 write!(f, "{}: unterminated list, expected ')'", pos)
@@ -225,13 +185,17 @@ impl std::fmt::Display for ErrorDisplay<'_> {
             SexParserErrorKind::UnterminatedBarSymbol => {
                 write!(f, "{}: unterminated barred symbol, expected '|'", pos)
             }
-            SexParserErrorKind::MalformedStringEscape { ch } => {
+            SexParserErrorKind::MalformedStringEscape(ch) => {
                 write!(f, "{}: malformed string escape sequence '\\{}'", pos, ch)
             }
-            SexParserErrorKind::MalformedBarEscape { ch } => {
-                write!(f, "{}: malformed barred symbol escape sequence '\\{}'", pos, ch)
+            SexParserErrorKind::MalformedBarEscape(ch) => {
+                write!(
+                    f,
+                    "{}: malformed barred symbol escape sequence '\\{}'",
+                    pos, ch
+                )
             }
-            SexParserErrorKind::MalformedHexEscape { value } => match value {
+            SexParserErrorKind::MalformedHexEscape(value) => match value {
                 MalformedHexCode::InvalidLeft { left } => {
                     write!(
                         f,
@@ -261,26 +225,20 @@ impl std::fmt::Display for ErrorDisplay<'_> {
                     )
                 }
             },
-            SexParserErrorKind::MalformedUnicodeEscape { value } => {
+            SexParserErrorKind::MalformedUnicodeEscape(value) => {
                 write!(f, "{}: malformed unicode escape sequence: {}", pos, value)
             }
             SexParserErrorKind::InvalidNumber => {
                 write!(f, "{}: invalid number", pos)
             }
             SexParserErrorKind::EmptyKeyword => write!(f, "{}: empty keyword", pos),
-            SexParserErrorKind::ExpectedWhitespace { ch } => {
+            SexParserErrorKind::ExpectedWhitespace(ch) => {
                 write!(f, "{}: expected whitespace before '{}'", pos, ch)
             }
-            SexParserErrorKind::InvalidUnicodeChar { value } => {
+            SexParserErrorKind::InvalidUnicodeChar(value) => {
                 write!(f, "{}, invalid unicode character '\\u{{{:x}}}'", pos, value)
             }
         }
-    }
-}
-
-impl std::fmt::Display for SexParserError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.display().fmt(f)
     }
 }
 
@@ -289,10 +247,7 @@ impl std::error::Error for SexParserError {}
 #[derive(Debug)]
 pub enum SexParserAtomError {
     Generic(SexParserError),
-    ExpectedSingleAtom {
-        pos: Position,
-        file: Option<String>,
-    },
+    ExpectedSingleAtom { pos: Position, file: Option<String> },
 }
 
 impl SexParserAtomError {

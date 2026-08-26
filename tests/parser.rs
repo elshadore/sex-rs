@@ -220,7 +220,7 @@ fn parse_double_dot_requires_whitespace() {
     let err = parse_exprlist_str("1.2.3").unwrap_err();
     assert!(matches!(
         err,
-        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace { ch: '.' }, .. }
+        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace('.'), .. }
     ));
 }
 
@@ -229,7 +229,7 @@ fn parse_number_with_letters_requires_whitespace() {
     let err = parse_exprlist_str("12a34").unwrap_err();
     assert!(matches!(
         err,
-        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace { ch: 'a' }, .. }
+        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace('a'), .. }
     ));
 }
 
@@ -314,7 +314,7 @@ fn parse_adjacent_strings_requires_whitespace() {
     let err = parse_exprlist_str(r#""a""b""#).unwrap_err();
     assert!(matches!(
         err,
-        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace { ch: '"' }, .. }
+        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace('"'), .. }
     ));
 }
 
@@ -323,7 +323,7 @@ fn parse_symbol_followed_by_list_requires_whitespace() {
     let err = parse_exprlist_str("foo(bar)").unwrap_err();
     assert!(matches!(
         err,
-        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace { ch: '(' }, .. }
+        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace('('), .. }
     ));
 }
 
@@ -332,7 +332,7 @@ fn parse_adjacent_lists_require_whitespace() {
     let err = parse_exprlist_str("(a)(b)").unwrap_err();
     assert!(matches!(
         err,
-        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace { ch: '(' }, .. }
+        SexParserError { kind: SexParserErrorKind::ExpectedWhitespace('('), .. }
     ));
 }
 
@@ -409,7 +409,7 @@ fn parse_invalid_escape() {
     let r = parse_exprlist_str(r#""\q""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedStringEscape { ch: 'q' }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedStringEscape('q'), .. })
     ));
 }
 
@@ -444,7 +444,7 @@ fn parse_escape_hex_missing_digit() {
     let r = parse_exprlist_str(r#""\x4""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape { value: _ }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape(_), .. })
     ));
 }
 
@@ -453,7 +453,7 @@ fn parse_escape_hex_invalid_char() {
     let r = parse_exprlist_str(r#""\xzz""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape { value: _ }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape(_), .. })
     ));
 }
 
@@ -467,7 +467,7 @@ fn parse_escape_unicode_empty() {
     let r = parse_exprlist_str(r#""\u{}""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape { value: _ }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(_), .. })
     ));
 }
 
@@ -476,7 +476,7 @@ fn parse_escape_unicode_missing_brace() {
     let r = parse_exprlist_str(r#""\u{41""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape { value: _ }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(_), .. })
     ));
 }
 
@@ -485,10 +485,7 @@ fn parse_escape_unicode_surrogate() {
     let r = parse_exprlist_str(r#""\u{D800}""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar {
-            value: 0xD800,
-            ..
-        }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0xD800), .. })
     ));
 }
 
@@ -497,10 +494,7 @@ fn parse_escape_unicode_too_large() {
     let r = parse_exprlist_str(r#""\u{110000}""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar {
-            value: 0x110000,
-            ..
-        }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0x110000), .. })
     ));
 }
 
@@ -525,7 +519,7 @@ fn parse_escape_unicode_no_brace() {
     let r = parse_exprlist_str(r#""\u41""#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape { value: _ }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(_), .. })
     ));
 }
 
@@ -607,14 +601,14 @@ fn parse_barred_symbol_unknown_escape() {
     let r = parse_exprlist_str("|ab\\qc|");
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedBarEscape { ch: 'q' }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedBarEscape('q'), .. })
     ));
 }
 
 #[test]
 fn parse_barred_symbol_bad_hex_shares_error() {
     let r = parse_exprlist_str("|\\xzz|");
-    assert!(matches!(r, Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape { value: _ }, .. })));
+    assert!(matches!(r, Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape(_), .. })));
 }
 
 #[test]
@@ -622,7 +616,7 @@ fn parse_barred_symbol_surrogate_shares_error() {
     let r = parse_exprlist_str("|\\u{D800}|");
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar { value: 0xD800, .. }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0xD800), .. })
     ));
 }
 
@@ -695,18 +689,18 @@ fn parse_barred_keyword_unknown_escape() {
     let r = parse_exprlist_str(r#":|ab\qc|"#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::MalformedBarEscape { ch: 'q' }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedBarEscape('q'), .. })
     ));
 }
 
 #[test]
 fn parse_barred_keyword_shares_hex_and_surrogate_errors() {
     let r = parse_exprlist_str(r#":|\xzz|"#);
-    assert!(matches!(r, Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape { value: _ }, .. })));
+    assert!(matches!(r, Err(SexParserError { kind: SexParserErrorKind::MalformedHexEscape(_), .. })));
     let r = parse_exprlist_str(r#":|\u{D800}|"#);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar { value: 0xD800, .. }, .. })
+        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0xD800), .. })
     ));
 }
 
@@ -904,7 +898,7 @@ fn error_unexpected_char() {
     let err = parse_exprlist_str(")").unwrap_err();
     assert!(matches!(
         err,
-        SexParserError { kind: SexParserErrorKind::UnexpectedChar { ch: ')' }, .. }
+        SexParserError { kind: SexParserErrorKind::UnexpectedChar(')'), .. }
     ));
 }
 
