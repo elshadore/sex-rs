@@ -1,6 +1,6 @@
 use crate::atom::{Atom, List, Number, Text, TextTy};
 use crate::parser_data::*;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Cursor, Read};
 
 fn is_symbol_char(c: char) -> bool {
     (c.is_alphabetic() || c.is_ascii_graphic()) && !matches!(c, '(' | ')' | ';' | '"' | '|')
@@ -357,7 +357,7 @@ fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     }
 }
 
-pub fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserError> {
+fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserError> {
     let mut atoms = Vec::new();
     let mut whitespace: bool = true;
 
@@ -380,7 +380,7 @@ pub fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserEr
     Ok(atoms)
 }
 
-pub fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserAtomError> {
+fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserAtomError> {
     skip_whitespace(p);
     let result = read_atom(p)?;
     skip_whitespace(p);
@@ -399,7 +399,7 @@ pub fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParser
 /// |               | () |
 pub fn parse_exprlist_str(input: impl AsRef<str>) -> Result<List, SexParserError> {
     let s = input.as_ref();
-    let cursor = std::io::Cursor::new(s.as_bytes());
+    let cursor = Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor);
     parse_exprlist(&mut parser)
 }
@@ -426,7 +426,7 @@ pub fn parse_exprlist_reader(reader: impl Read) -> Result<List, SexParserError> 
 /// |               | `Error` |
 pub fn parse_expression_str(input: impl AsRef<str>) -> Result<Atom, SexParserAtomError> {
     let s = input.as_ref();
-    let cursor = std::io::Cursor::new(s.as_bytes());
+    let cursor = Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor);
     parse_expression(&mut parser)
 }
