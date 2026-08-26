@@ -6,7 +6,7 @@ Both symbols and strings have to be valid unicode characters.
 - [ ] Pretty Printing
   - [ ] Method on `IntoSex`
 - [ ] Redo Macro Derive
-  - derive changes rust symbols `foo_bar` to lisp symbols `foo-bar`
+  - [x] derive changes rust symbols `foo_bar` to lisp symbols `foo-bar`
   - [ ] Serializer
   - [ ] default in the declarative macro should use the Default trait if no value is provided
 - [ ] Look at *all* Error Messages to see if they make sense.

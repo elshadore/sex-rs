@@ -21,4 +21,4 @@ pub use sex_util::{is_symbol_char, sex_name};
 pub use view::{KeywordView, ListView};
 
 #[cfg(feature = "derive")]
-pub use sex_derive::Sex;
+pub use sex_derive::FromSex;

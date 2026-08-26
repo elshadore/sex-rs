@@ -1,5 +1,6 @@
 use crate::atom::{Atom, Number, Text, TextTy};
 use crate::err;
+use crate::is_symbol_char;
 use crate::list::{List, ListBuilder};
 use crate::parser_data::*;
 use std::io::{BufRead, BufReader, Cursor, Read};

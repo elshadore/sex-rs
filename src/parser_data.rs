@@ -1,4 +1,3 @@
-use crate::is_symbol_char;
 use std::io::BufRead;
 
 #[macro_export]

@@ -1,12 +1,12 @@
-use sex::{Atom, AtomTy, FromSex, Number, Sex, SexError, parse_expression_str};
+use sex::{Atom, AtomTy, FromSex, Number, SexError, parse_expression_str};
 
-#[derive(Debug, PartialEq, Sex)]
+#[derive(Debug, PartialEq, FromSex)]
 struct Point {
     x: i64,
     y: i64,
 }
 
-#[derive(Debug, PartialEq, Sex)]
+#[derive(Debug, PartialEq, FromSex)]
 struct Config {
     name: String,
     #[sex(keyword)]
@@ -15,14 +15,14 @@ struct Config {
     height: i64,
 }
 
-#[derive(Debug, PartialEq, Sex)]
+#[derive(Debug, PartialEq, FromSex)]
 struct OptionalFields {
     name: String,
     #[sex(keyword, default)]
     label: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Sex)]
+#[derive(Debug, PartialEq, FromSex)]
 enum Shape {
     #[sex(tag = "circle")]
     Circle(i64),
@@ -41,7 +41,7 @@ enum Shape {
     Pt(Point),
 }
 
-#[derive(Debug, PartialEq, Sex)]
+#[derive(Debug, PartialEq, FromSex)]
 enum Command {
     #[sex(tag = "noop")]
     Noop,
