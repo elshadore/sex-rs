@@ -3,17 +3,12 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Printer
-  - [x] Normal
-  - [ ] Pretty Printing
-  - [x] Implement Display
-  - [ ] Print and Pretty Print Methods
-- [ ] Serializer
-  - [ ] IntoSex Trait
-  - [ ] `sex_print`, and `sex_pretty_print`
+- [ ] Pretty Printing
+  - [ ] Method on `IntoSex`
 - [ ] Redo Macro Derive
-  derive changes rust symbols `foo_bar` to lisp symbols `foo-bar`
-- [ ] default in the declarative macro should use the Default trait if no value is provided
+  - derive changes rust symbols `foo_bar` to lisp symbols `foo-bar`
+  - [ ] Serializer
+  - [ ] default in the declarative macro should use the Default trait if no value is provided
 - [ ] Look at *all* Error Messages to see if they make sense.
   - Unicode has bad errors
 - [ ] Test check.
