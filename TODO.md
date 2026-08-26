@@ -7,7 +7,6 @@ Both symbols and strings have to be valid unicode characters.
   - Prints line number, char number, full line print, error print.
   - Parser `Metadata` for file name 
   - Seperate Logical Parser Error that are `Copy` and `Clone`
-- [ ] Make Parsing more Precedural
 - [ ] Serializer
   - IntoSex Trait
 - [ ] Redo Macro Derive
@@ -22,3 +21,4 @@ Both symbols and strings have to be valid unicode characters.
   Use this add the base for the example in the README
 - [ ] Redo README
 - [ ] Floating Point Parsing Precision
+- [ ] Write Format Spec

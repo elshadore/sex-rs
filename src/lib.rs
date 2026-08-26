@@ -5,8 +5,8 @@ mod sex_trait;
 mod view;
 
 pub use atom::{Atom, AtomTy, List, Number, SexError, Text, TextTy};
-pub use parser::{parse_expression_str, parse_expression_reader, parse_exprlist_str, parse_exprlist_reader};
-pub use parser_data::{MalformedHexCode, Parser, Position, SexParserAtomError, SexParserError};
+pub use parser::{parse_expression_str, parse_expression_file, parse_expression_reader, parse_exprlist_str, parse_exprlist_file, parse_exprlist_reader};
+pub use parser_data::{MalformedHexCode, Parser, Position, SexParserAtomError, SexParserError, SexParserErrorKind};
 pub use sex_trait::FromSex;
 pub use view::{AtomView, KeywordView};
 
