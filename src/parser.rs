@@ -1,4 +1,5 @@
 use crate::atom::{Atom, List, Number, Text, TextTy};
+use crate::err;
 use crate::parser_data::*;
 use std::io::{BufRead, BufReader, Cursor, Read};
 
@@ -68,15 +69,22 @@ fn read_hex_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserError
     match read_hex_digit(p) {
         Ok(hi) => match read_hex_digit(p) {
             Ok(lo) => Ok(char::from((hi << 4) | lo)),
-            Err(HexError::Invalid(right)) => err!(p, MalformedHexEscape(MalformedHexCode::InvalidRight {
+            Err(HexError::Invalid(right)) => err!(
+                p,
+                MalformedHexEscape(MalformedHexCode::InvalidRight {
                     left: hi.into(),
                     right,
-                })),
-            Err(HexError::NoChar) => err!(p, MalformedHexEscape(MalformedHexCode::MissingRight {
-                    left: hi.into(),
-                })),
+                })
+            ),
+            Err(HexError::NoChar) => err!(
+                p,
+                MalformedHexEscape(MalformedHexCode::MissingRight { left: hi.into() })
+            ),
         },
-        Err(HexError::Invalid(left)) => err!(p, MalformedHexEscape(MalformedHexCode::InvalidLeft { left })),
+        Err(HexError::Invalid(left)) => err!(
+            p,
+            MalformedHexEscape(MalformedHexCode::InvalidLeft { left })
+        ),
         Err(HexError::NoChar) => err!(p, MalformedHexEscape(MalformedHexCode::MissingLeft)),
     }
 }
@@ -108,7 +116,7 @@ fn read_unicode_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserE
                 return err!(p, MalformedUnicodeEscape(ch));
             }
             None => {
-            return err!(p, MalformedUnicodeEscape('\0'));
+                return err!(p, MalformedUnicodeEscape('\0'));
             }
         }
     }
@@ -388,7 +396,10 @@ fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserAtom
 /// | (foo bar baz) | ((foo bar bar)) |
 /// | (foo bar) baz | ((foo bar) baz) |
 /// |               | () |
-pub fn parse_exprlist_str(input: impl AsRef<str>, file: Option<String>) -> Result<List, SexParserError> {
+pub fn parse_exprlist_str(
+    input: impl AsRef<str>,
+    file: Option<String>,
+) -> Result<List, SexParserError> {
     let s = input.as_ref();
     let cursor = Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor, file);
@@ -402,7 +413,10 @@ pub fn parse_exprlist_str(input: impl AsRef<str>, file: Option<String>) -> Resul
 /// | (foo bar baz) | ((foo bar bar)) |
 /// | (foo bar) baz | ((foo bar) baz) |
 /// |               | () |
-pub fn parse_exprlist_reader(reader: impl Read, file: Option<String>) -> Result<List, SexParserError> {
+pub fn parse_exprlist_reader(
+    reader: impl Read,
+    file: Option<String>,
+) -> Result<List, SexParserError> {
     let reader = BufReader::new(reader);
     let mut parser = Parser::new(reader, file);
     parse_exprlist(&mut parser)
@@ -415,7 +429,10 @@ pub fn parse_exprlist_reader(reader: impl Read, file: Option<String>) -> Result<
 /// | (foo bar baz) | (foo bar bar) |
 /// | (foo bar) baz | `Error` |
 /// |               | `Error` |
-pub fn parse_expression_str(input: impl AsRef<str>, file: Option<String>) -> Result<Atom, SexParserAtomError> {
+pub fn parse_expression_str(
+    input: impl AsRef<str>,
+    file: Option<String>,
+) -> Result<Atom, SexParserAtomError> {
     let s = input.as_ref();
     let cursor = Cursor::new(s.as_bytes());
     let mut parser = Parser::new(cursor, file);
@@ -429,7 +446,10 @@ pub fn parse_expression_str(input: impl AsRef<str>, file: Option<String>) -> Res
 /// | (foo bar baz) | (foo bar bar) |
 /// | (foo bar) baz | `Error` |
 /// |               | `Error` |
-pub fn parse_expression_reader(reader: impl Read, file: Option<String>) -> Result<Atom, SexParserAtomError> {
+pub fn parse_expression_reader(
+    reader: impl Read,
+    file: Option<String>,
+) -> Result<Atom, SexParserAtomError> {
     let reader = BufReader::new(reader);
     let mut parser = Parser::new(reader, file);
     parse_expression(&mut parser)

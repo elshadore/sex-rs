@@ -1,15 +1,3 @@
-macro_rules! err {
-    ($p:expr, $kind:ident) => {
-        Err($p.error($p.pos, SexParserErrorKind::$kind))
-    };
-    ($p:expr, $kind:ident($($arg:tt)*)) => {
-        Err($p.error($p.pos, SexParserErrorKind::$kind($($arg)*)))
-    };
-    ($p:expr, $kind:ident { $($arg:tt)* }) => {
-        Err($p.error($p.pos, SexParserErrorKind::$kind { $($arg)* }))
-    };
-}
-
 mod atom;
 mod parser;
 mod parser_data;
