@@ -1,4 +1,5 @@
 use crate::atom::{Atom, Number};
+use crate::list::List;
 use crate::printer::print_atom;
 use std::fmt;
 
@@ -77,5 +78,17 @@ impl<T: IntoSex> IntoSex for Option<T> {
 impl<T: IntoSex> IntoSex for Vec<T> {
     fn into_sex(&self) -> Atom {
         Atom::List(self.iter().map(IntoSex::into_sex).collect())
+    }
+}
+
+impl IntoSex for Atom {
+    fn into_sex(&self) -> Atom {
+        self.clone()
+    }
+}
+
+impl IntoSex for List {
+    fn into_sex(&self) -> Atom {
+        Atom::List(self.clone())
     }
 }

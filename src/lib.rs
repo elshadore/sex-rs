@@ -5,7 +5,6 @@ mod list;
 mod parser;
 mod parser_data;
 mod printer;
-mod utils;
 mod view;
 
 pub use atom::{Atom, AtomTy, Number, SexError, Text, TextTy};
@@ -17,9 +16,8 @@ pub use parser::{
 };
 pub use parser_data::{
     MalformedHexCode, Parser, Position, SexParserAtomError, SexParserError, SexParserErrorKind,
-    is_symbol_char,
 };
-pub use utils::sex_name;
+pub use sex_util::{is_symbol_char, sex_name};
 pub use view::{KeywordView, ListView};
 
 #[cfg(feature = "derive")]

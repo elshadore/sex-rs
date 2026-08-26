@@ -1,3 +1,4 @@
+use crate::is_symbol_char;
 use std::io::BufRead;
 
 #[macro_export]
@@ -11,10 +12,6 @@ macro_rules! err {
     ($p:expr, $kind:ident { $($arg:tt)* }) => {
         Err($p.error($p.pos, SexParserErrorKind::$kind { $($arg)* }))
     };
-}
-
-pub fn is_symbol_char(c: char) -> bool {
-    (c.is_alphabetic() || c.is_ascii_graphic()) && !matches!(c, '(' | ')' | ';' | '"' | '|')
 }
 
 fn read_char(reader: &mut impl BufRead) -> Option<char> {

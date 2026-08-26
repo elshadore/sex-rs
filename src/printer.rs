@@ -1,5 +1,5 @@
 use crate::atom::{Atom, Number, TextTy};
-use crate::parser_data::is_symbol_char;
+use crate::is_symbol_char;
 use std::fmt;
 
 fn needs_bar(s: &str) -> bool {

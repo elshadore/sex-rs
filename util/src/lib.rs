@@ -1,6 +1,7 @@
-use crate::is_symbol_char;
+pub fn is_symbol_char(c: char) -> bool {
+    (c.is_alphabetic() || c.is_ascii_graphic()) && !matches!(c, '(' | ')' | ';' | '"' | '|')
+}
 
-/// A function used in the `FromSex` and `IntoSex` macros for determining the symbol names of things.
 pub fn sex_name(string: impl AsRef<str>) -> String {
     let string = string.as_ref();
     for c in string.chars() {

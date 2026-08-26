@@ -69,7 +69,7 @@ fn derive_struct(name: &syn::Ident, fields: &Fields) -> proc_macro2::TokenStream
         if sex_attrs.keyword {
             let keyword_name = sex_attrs
                 .keyword_name
-                .unwrap_or_else(|| field_name.to_string().replace('_', "-"));
+                .unwrap_or_else(|| sex_util::sex_name(field_name.to_string()));
 
             let parser = if sex_attrs.strict {
                 quote! {
@@ -131,7 +131,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
 
         let tag = sex_attrs
             .keyword_name
-            .unwrap_or_else(|| variant_name.to_string().to_lowercase().replace('_', "-"));
+            .unwrap_or_else(|| sex_util::sex_name(variant_name.to_string()));
 
         variant_names.push(tag.clone());
 
@@ -199,7 +199,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                     if sex_attrs.keyword {
                         let keyword_name = sex_attrs
                             .keyword_name
-                            .unwrap_or_else(|| field_name.to_string().replace('_', "-"));
+                .unwrap_or_else(|| sex_util::sex_name(field_name.to_string()));
 
                         let parser = if sex_attrs.strict {
                             quote! {

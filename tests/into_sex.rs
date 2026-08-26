@@ -83,3 +83,18 @@ fn into_sex_vec_empty() {
     let v: Vec<i64> = vec![];
     assert_eq!(v.into_sex(), Atom::List(List::from(vec![])));
 }
+
+#[test]
+fn into_sex_atom_identity() {
+    let a = Atom::symbol("hello");
+    assert_eq!(a.clone().into_sex(), a);
+}
+
+#[test]
+fn into_sex_list() {
+    let list = List::from(vec![Atom::True, Atom::Nil]);
+    assert_eq!(
+        list.into_sex(),
+        Atom::List(List::from(vec![Atom::True, Atom::Nil]))
+    );
+}
