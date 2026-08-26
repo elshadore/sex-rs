@@ -17,6 +17,7 @@ pub use parser_data::{
     is_symbol_char,
 };
 pub use from_sex::FromSex;
+pub use into_sex::IntoSex;
 pub use view::{ListView, KeywordView};
 
 #[cfg(feature = "derive")]
