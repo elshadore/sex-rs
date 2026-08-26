@@ -3,8 +3,7 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Ensure Full Number Parsing
-  emulate rust or jsons number parsing rules
+- [ ] Floating Point Parsing Precision
 - [ ] Nice Parser Errors like *compilation* buffer format
   - Prints line number, char number, full line print, error print.
   - Parser `Metadata` for file name 

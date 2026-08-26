@@ -372,60 +372,70 @@ impl<R: BufRead> Parser<R> {
 
     fn parse_number(&mut self) -> Result<Atom, SexParserError> {
         let start = self.pos;
-        let negative = if self.at() == Some('-') {
-            self.inc();
-            true
-        } else {
-            false
-        };
+        let mut num_buf = Vec::new();
 
-        let mut mantissa: u64 = 0;
+        if self.at() == Some('-') {
+            num_buf.push(b'-');
+            self.inc();
+        }
+
         match self.at() {
             Some('0') => {
+                num_buf.push(b'0');
                 self.inc();
                 if self.at().is_some_and(|ch| ch.is_ascii_digit()) {
                     return Err(SexParserError::new_invalid_number(start));
                 }
             }
+            Some(ch) if ch.is_ascii_digit() => {
+                self.take_digits_buf(&mut num_buf);
+            }
             _ => {
-                self.take_digits(&mut mantissa, start)?;
+                return Err(SexParserError::new_invalid_number(start));
             }
         }
 
         let mut is_float = false;
-        let mut frac_digits: u32 = 0;
         if self.at() == Some('.') {
+            num_buf.push(b'.');
             self.inc();
             is_float = true;
-            frac_digits = self.take_digits(&mut mantissa, start)?;
+            let frac_digits = self.take_digits_buf(&mut num_buf);
             if frac_digits == 0 {
                 return Err(SexParserError::new_invalid_number(start));
             }
         }
 
-        let mut exp: i32 = 0;
         if self.at() == Some('e') || self.at() == Some('E') {
-            self.inc();
             is_float = true;
-            let exp_negative = if self.at() == Some('-') {
+            num_buf.push(b'e');
+            self.inc();
+            if self.at() == Some('-') {
+                num_buf.push(b'-');
                 self.inc();
-                true
-            } else {
-                if self.at() == Some('+') {
-                    self.inc();
-                }
-                false
-            };
-            let mut magnitude: u64 = 0;
-            if self.take_digits(&mut magnitude, start)? == 0 {
+            } else if self.at() == Some('+') {
+                num_buf.push(b'+');
+                self.inc();
+            }
+            if self.take_digits_buf(&mut num_buf) == 0 {
                 return Err(SexParserError::new_invalid_number(start));
             }
-            let magnitude =
-                i32::try_from(magnitude).map_err(|_| SexParserError::new_invalid_number(start))?;
-            exp = if exp_negative { -magnitude } else { magnitude };
         }
 
-        if !is_float {
+        if is_float {
+            let s = std::str::from_utf8(&num_buf)
+                .map_err(|_| SexParserError::new_invalid_number(start))?;
+            let n: f64 = s
+                .parse()
+                .map_err(|_| SexParserError::new_invalid_number(start))?;
+            Ok(Atom::Number(Number::Float(n)))
+        } else {
+            let negative = num_buf[0] == b'-';
+            let digits = if negative { &num_buf[1..] } else { &num_buf[..] };
+            let mantissa = std::str::from_utf8(digits)
+                .map_err(|_| SexParserError::new_invalid_number(start))?
+                .parse::<u64>()
+                .map_err(|_| SexParserError::new_invalid_number(start))?;
             let n: i64 = if negative {
                 if mantissa > (i64::MAX as u64) + 1 {
                     return Err(SexParserError::new_invalid_number(start));
@@ -439,32 +449,35 @@ impl<R: BufRead> Parser<R> {
                 i64::try_from(mantissa).map_err(|_| SexParserError::new_invalid_number(start))?
             };
             Ok(Atom::Number(Number::Integer(n)))
-        } else {
-            let sign = if negative { -1.0 } else { 1.0 };
-            let scale = 10f64.powi(exp - (frac_digits as i32));
-            Ok(Atom::Number(Number::Float(
-                sign * (mantissa as f64) * scale,
-            )))
         }
     }
 
-    fn take_digits(&mut self, mantissa: &mut u64, start: Position) -> Result<u32, SexParserError> {
+    fn take_digits_buf(&mut self, buf: &mut Vec<u8>) -> u32 {
         let mut count: u32 = 0;
-        while let Some(digit) = self.at().and_then(|ch| ch.to_digit(10)) {
-            *mantissa = (*mantissa)
-                .checked_mul(10)
-                .and_then(|m| m.checked_add(digit as u64))
-                .ok_or_else(|| SexParserError::new_invalid_number(start))?;
+        while let Some(ch) = self.at() {
+            if !ch.is_ascii_digit() {
+                break;
+            }
+            buf.push(ch as u8);
             self.inc();
             count += 1;
         }
-        Ok(count)
+        count
     }
 }
 
-fn is_symbol_char(ch: char) -> bool {
-    (ch.is_alphanumeric() || ch.is_ascii_graphic())
-        && (ch != '(' && ch != ')' && ch != ';' && ch != '"' && ch != '|')
+fn is_symbol_char(c: char) -> bool {
+    if !c.is_alphabetic() && !c.is_ascii_graphic() {
+        return false;
+    }
+    match c {
+        '(' => false,
+        ')' => false,
+        ';' => false,
+        '"' => false,
+        '|' => false,
+        _ => true,
+    }
 }
 
 /// Parses multiple atoms/expressions from a string.

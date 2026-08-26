@@ -930,3 +930,61 @@ fn nil_in_list() {
     let list = atom.as_list().unwrap();
     assert_eq!(list[0], Atom::Nil);
 }
+
+fn assert_float_eq(input: &str, expected: f64) {
+    let atom = parse_atom(input).unwrap();
+    match atom {
+        Atom::Number(Number::Float(f)) => {
+            assert_eq!(f.to_bits(), expected.to_bits(),
+                "parse_float({input}): got {f}, expected {expected}");
+        }
+        other => panic!("expected Float, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_float_precision_zero_point_three() {
+    assert_float_eq("0.3", 0.3_f64);
+}
+
+#[test]
+fn parse_float_precision_many_fractional_digits() {
+    assert_float_eq("0.123456789012345678", "0.123456789012345678".parse::<f64>().unwrap());
+}
+
+#[test]
+fn parse_float_precision_pi() {
+    assert_float_eq("3.141592653589793238", "3.141592653589793238".parse::<f64>().unwrap());
+}
+
+#[test]
+fn parse_float_precision_subnormal() {
+    assert_float_eq("5e-324", 5e-324_f64);
+}
+
+#[test]
+fn parse_float_precision_near_f64_max() {
+    assert_float_eq("1.7976931348623157e308", "1.7976931348623157e308".parse::<f64>().unwrap());
+}
+
+#[test]
+fn parse_float_precision_many_nines() {
+    assert_float_eq("0.9999999999999999", "0.9999999999999999".parse::<f64>().unwrap());
+}
+
+#[test]
+fn parse_float_precision_negative_zero() {
+    let atom = parse_atom("-0.0").unwrap();
+    match atom {
+        Atom::Number(Number::Float(f)) => {
+            assert_eq!(f, -0.0_f64);
+            assert!(f.is_sign_negative());
+        }
+        other => panic!("expected Float, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_float_very_small_exponent() {
+    assert_float_eq("1e-308", "1e-308".parse::<f64>().unwrap());
+}
