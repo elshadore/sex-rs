@@ -5,10 +5,8 @@ pub fn expand_from_sex(name: &syn::Ident, data: &Data) -> proc_macro2::TokenStre
     match data {
         Data::Struct(data_struct) => derive_struct(name, &data_struct.fields),
         Data::Enum(data_enum) => derive_enum(name, data_enum),
-        Data::Union(_) => {
-            syn::Error::new_spanned(name, "FromSex derive does not support unions")
-                .to_compile_error()
-        }
+        Data::Union(_) => syn::Error::new_spanned(name, "FromSex derive does not support unions")
+            .to_compile_error(),
     }
 }
 
@@ -164,7 +162,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                     if sex_attrs.keyword {
                         let keyword_name = sex_attrs
                             .keyword_name
-                .unwrap_or_else(|| sex_util::sex_name(field_name.to_string()));
+                            .unwrap_or_else(|| sex_util::sex_name(field_name.to_string()));
 
                         let parser = if sex_attrs.strict {
                             quote! {
@@ -263,104 +261,141 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
     }
 }
 
-struct SexAttrs {
-    keyword: bool,
-    keyword_name: Option<String>,
-    strict: bool,
-    default_expr: Option<Expr>,
+enum SexKeyword {
+    Strict,
+    Custom(String),
 }
 
-fn parse_sex_attrs(attrs: &[Attribute]) -> SexAttrs {
-    let mut result = SexAttrs {
-        keyword: false,
-        keyword_name: None,
-        strict: true,
-        default_expr: None,
-    };
+enum SexDefault {
+    Default,
+    Custom(Expr),
+}
 
-    for attr in attrs {
-        if !attr.path().is_ident("sex") {
-            continue;
+struct SexAttributes {
+    pub tag: Option<String>,
+    pub keyword: Option<SexKeyword>,
+    pub default: Option<SexDefault>,
+}
+
+impl SexAttributes {
+    pub fn verify(&self) {
+        if self.tag.is_some() {
+            if self.keyword.is_some() {
+                panic!("")
+            }
+            if self.default.is_some() {
+                panic!("")
+            }
+        } else if self.default.is_some() {
+            if self.keyword.is_none() {
+                panic!("")
+            }
         }
+    }
+}
 
-        if let Meta::List(meta_list) = &attr.meta {
-            let tokens: Vec<_> = meta_list.tokens.clone().into_iter().collect();
-
-            let mut i = 0;
-            while i < tokens.len() {
-                if let proc_macro2::TokenTree::Ident(ident) = &tokens[i] {
-                    let ident_str = ident.to_string();
-
-                    if ident_str == "keyword" {
-                        result.keyword = true;
-
-                        if i + 1 < tokens.len() {
-                            if let proc_macro2::TokenTree::Punct(punct) = &tokens[i + 1] {
-                                if punct.as_char() == '=' {
-                                    if i + 2 < tokens.len() {
-                                        if let proc_macro2::TokenTree::Literal(lit) = &tokens[i + 2]
-                                        {
-                                            let lit_tree: proc_macro2::TokenTree =
-                                                lit.clone().into();
-                                            if let Ok(Lit::Str(lit_str)) =
-                                                syn::parse2(quote! { #lit_tree })
-                                            {
-                                                result.keyword_name = Some(lit_str.value());
-                                                i += 2;
-                                            }
-                                        }
-                                    }
+fn parse_sex_attribute(attributes: &[Attribute]) -> SexAttributes {
+    let mut result = SexAttributes {
+        tag: None,
+        keyword: None,
+        default: None
+    };
+    
+    for attribute in attributes.iter().filter(|attrib| attrib.path().is_ident("sex")) {
+        if let Meta::List(meta) = &attribute.meta {
+            let mut iter = meta.tokens.clone().into_iter();
+            if let Some(proc_macro2::TokenTree::Ident(ident)) = iter.next() {
+                match ident.to_string().as_str() {
+                    "keyword" => {
+                        if result.keyword.is_some() {
+                            panic!("keyword attribute already defined");
+                        }
+                        if maybe_punct(&mut iter, '=') {
+                            match iter.next() {
+                                Some(proc_macro2::TokenTree::Literal(lit)) => {
+                                    result.keyword = Some(SexKeyword::Custom(lit.to_string()));
+                                }
+                                Some(proc_macro2::TokenTree::Ident(ident)) => {
+                                    result.keyword = Some(SexKeyword::Custom(ident.to_string()));
+                                }
+                                _ => {
+                                    panic!("expected");
                                 }
                             }
+                        } else {
+                            result.keyword = Some(SexKeyword::Strict);
                         }
-                    } else if ident_str == "default" {
-                        result.strict = false;
-
-                        if i + 1 < tokens.len() {
-                            if let proc_macro2::TokenTree::Punct(punct) = &tokens[i + 1] {
-                                if punct.as_char() == '=' {
-                                    if i + 2 < tokens.len() {
-                                        let expr_tokens: Vec<_> = tokens[i + 2..].iter()
-                                            .take_while(|t| !matches!(t, proc_macro2::TokenTree::Punct(p) if p.as_char() == ','))
-                                            .cloned()
-                                            .collect();
-
-                                        if let Ok(expr) = syn::parse2(quote! { #(#expr_tokens)* }) {
-                                            result.default_expr = Some(expr);
-                                        }
-
-                                        i += 2 + expr_tokens.len();
-                                        continue;
-                                    }
+                    },
+                    "default" => {
+                        if result.default.is_some() {
+                            panic!("default attribute already defined");
+                        }
+                        if maybe_punct(&mut iter, '=') {
+                            match iter.next() {
+                                Some(proc_macro2::TokenTree::Literal(lit)) => {
+                                    let expr = syn::parse2(quote! { #lit }).unwrap();
+                                    result.default = Some(SexDefault::Custom(expr));
+                                }
+                                Some(proc_macro2::TokenTree::Ident(ident)) => {
+                                    let expr = syn::parse2(quote! { #ident }).unwrap();
+                                    result.default = Some(SexDefault::Custom(expr));
+                                }
+                                _ => {
+                                    panic!("expected default");
                                 }
                             }
+                        } else {
+                            result.default = Some(SexDefault::Default);
                         }
-                    } else if ident_str == "tag" {
-                        if i + 1 < tokens.len() {
-                            if let proc_macro2::TokenTree::Punct(punct) = &tokens[i + 1] {
-                                if punct.as_char() == '=' {
-                                    if i + 2 < tokens.len() {
-                                        if let proc_macro2::TokenTree::Literal(lit) = &tokens[i + 2]
-                                        {
-                                            let lit_tree: proc_macro2::TokenTree =
-                                                lit.clone().into();
-                                            if let Ok(Lit::Str(lit_str)) =
-                                                syn::parse2(quote! { #lit_tree })
-                                            {
-                                                result.keyword_name = Some(lit_str.value());
-                                                i += 2;
-                                            }
-                                        }
-                                    }
-                                }
+                    }
+                    "tag" => {
+                        if let Some(tag) = result.tag {
+                            panic!("tag attribute already defined: {tag}");
+                        }
+                        expect_punct(&mut iter, '=');
+                        match iter.next() {
+                            Some(proc_macro2::TokenTree::Literal(lit)) => {
+                                result.tag = Some(lit.to_string());
+                            }
+                            Some(proc_macro2::TokenTree::Ident(ident)) => {
+                                result.tag = Some(ident.to_string());
+                            }
+                            _ => {
+                                panic!("expected");
                             }
                         }
                     }
+                    _ => {
+                        panic!("unknown attribute identifier");
+                    }
                 }
-                i += 1;
             }
         }
     }
 
     result
+
+}
+
+fn expect_punct(iter: &mut impl Iterator<Item = proc_macro2::TokenTree>, expect: char) {
+    if let Some(proc_macro2::TokenTree::Punct(punct)) = iter.next() {
+        let found = punct.as_char();
+        if found != expect {
+            panic!("expected: '{expect}', found: '{found}'");
+        }
+    } else {
+        panic!("expected: '{expect}'")
+    }
+}
+
+fn maybe_punct(iter: &mut impl Iterator<Item = proc_macro2::TokenTree>, maybe: char) -> bool {
+    if let Some(proc_macro2::TokenTree::Punct(punct)) = iter.next() {
+        let found = punct.as_char();
+        if found != maybe {
+            panic!("expected: '{maybe}', found: '{found}'");
+        }
+        true
+    } else {
+        false
+    }
 }

@@ -20,3 +20,7 @@ Both symbols and strings have to be valid unicode characters.
 - [ ] Redo README
 - [ ] Floating Point Parsing Precision
 - [ ] Write Format Spec
+
+
+## Keyword Details
+if the struct has the specifier `keyword` the `default` modifier can be applied to it. By default the default modifier means the keyword is no longer `strict`, as in it doesn't have to be supplied by the sex data. Its default value is determined by the Default trait, if there is not Default trait for the type, a compilation error is thrown. An optional override for the default modifer can be specified. `default = value` specifies to use that value as the default instead (no Default trait is needed).

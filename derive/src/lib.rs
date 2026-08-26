@@ -24,7 +24,8 @@ mod from_sex;
 ///     Rect {
 ///         width: i32,
 ///         height: i32,
-///         #[sex(keyword, default = 0)]
+///
+///         #[sex(keyword = "z", default)]
 ///         x: i32,
 ///         #[sex(keyword, default = 0)]
 ///         y: i32,
