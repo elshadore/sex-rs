@@ -1,6 +1,13 @@
 use crate::Atom;
 use std::ops::Deref;
 
+#[macro_export]
+macro_rules! list {
+    ($($elem:expr),* $(,)?) => {
+        $crate::List::from(vec![$($elem),*])
+    };
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct List {
     vec: Vec<Atom>,
@@ -66,11 +73,23 @@ impl ListBuilder {
         self.vec.push(atom);
     }
 
+    pub fn append<'a>(&mut self, other: impl Iterator<Item = &'a Atom>) {
+        for atom in other {
+            self.push(atom.clone());
+        }
+    }
+
     pub fn pop(&mut self) -> Option<Atom> {
         self.vec.pop()
     }
 
     pub fn build(self) -> List {
         List { vec: self.vec }
+    }
+}
+
+impl From<Vec<Atom>> for ListBuilder {
+    fn from(vec: Vec<Atom>) -> Self {
+        ListBuilder { vec }
     }
 }
