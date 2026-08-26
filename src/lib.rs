@@ -3,7 +3,8 @@ mod list;
 mod parser;
 mod parser_data;
 mod printer;
-mod sex_trait;
+mod from_sex;
+mod into_sex;
 mod view;
 
 pub use atom::{Atom, AtomTy, Number, SexError, Text, TextTy};
@@ -15,7 +16,7 @@ pub use parser_data::{
     MalformedHexCode, Parser, Position, SexParserAtomError, SexParserError, SexParserErrorKind,
     is_symbol_char,
 };
-pub use sex_trait::FromSex;
+pub use from_sex::FromSex;
 pub use view::{ListView, KeywordView};
 
 #[cfg(feature = "derive")]
