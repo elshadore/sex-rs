@@ -38,6 +38,17 @@ pub fn print_number(f: &mut fmt::Formatter<'_>, num: &Number) -> fmt::Result {
     }
 }
 
+pub fn print_list(f: &mut fmt::Formatter<'_>, elems: &[Atom]) -> fmt::Result {
+    write!(f, "(")?;
+    for (i, elem) in elems.iter().enumerate() {
+        if i > 0 {
+            write!(f, " ")?;
+        }
+        print_atom(f, elem)?;
+    }
+    write!(f, ")")
+}
+
 pub fn print_atom(f: &mut fmt::Formatter<'_>, atom: &Atom) -> fmt::Result {
     match atom {
         Atom::Nil => write!(f, "nil"),
@@ -66,15 +77,6 @@ pub fn print_atom(f: &mut fmt::Formatter<'_>, atom: &Atom) -> fmt::Result {
                 write!(f, "\"")
             }
         },
-        Atom::List(elems) => {
-            write!(f, "(")?;
-            for (i, elem) in elems.iter().enumerate() {
-                if i > 0 {
-                    write!(f, " ")?;
-                }
-                write!(f, "{}", elem)?;
-            }
-            write!(f, ")")
-        }
+        Atom::List(elems) => print_list(f, elems),
     }
 }

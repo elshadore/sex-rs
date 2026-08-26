@@ -3,7 +3,7 @@ fn main() {
     let file = std::fs::File::open(&name).unwrap();
     match sex::parse_exprlist_reader(file, Some(name)) {
         Ok(atom) => {
-            println!("{atom:?}");
+            println!("{atom}");
         }
         Err(err) => {
             eprintln!("{err}");

@@ -1,4 +1,6 @@
 use crate::Atom;
+use crate::printer::print_list;
+use std::fmt;
 use std::ops::Deref;
 
 #[macro_export]
@@ -65,6 +67,12 @@ impl FromIterator<Atom> for List {
 impl From<Vec<Atom>> for List {
     fn from(vec: Vec<Atom>) -> Self {
         List { vec }
+    }
+}
+
+impl fmt::Display for List {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        print_list(f, &self.vec)
     }
 }
 
