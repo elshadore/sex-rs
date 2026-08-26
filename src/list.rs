@@ -14,18 +14,6 @@ pub struct List {
 }
 
 impl List {
-    pub fn len(&self) -> usize {
-        self.vec.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.vec.is_empty()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Atom> {
-        self.vec.iter()
-    }
-
     pub fn get(&self, index: usize) -> Option<&Atom> {
         self.vec.get(index)
     }
@@ -34,6 +22,18 @@ impl List {
         List {
             vec: slice.to_vec(),
         }
+    }
+    
+    pub fn iter(&self) -> impl Iterator<Item = &Atom> {
+        self.vec.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
     }
 }
 
@@ -85,6 +85,14 @@ impl ListBuilder {
 
     pub fn build(self) -> List {
         List { vec: self.vec }
+    }
+    
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
     }
 }
 
