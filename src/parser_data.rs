@@ -13,6 +13,10 @@ macro_rules! err {
     };
 }
 
+pub fn is_symbol_char(c: char) -> bool {
+    (c.is_alphabetic() || c.is_ascii_graphic()) && !matches!(c, '(' | ')' | ';' | '"' | '|')
+}
+
 fn read_char(reader: &mut impl BufRead) -> Option<char> {
     loop {
         let buf = reader.fill_buf().ok()?;

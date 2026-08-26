@@ -3,10 +3,6 @@ use crate::err;
 use crate::parser_data::*;
 use std::io::{BufRead, BufReader, Cursor, Read};
 
-fn is_symbol_char(c: char) -> bool {
-    (c.is_alphabetic() || c.is_ascii_graphic()) && !matches!(c, '(' | ')' | ';' | '"' | '|')
-}
-
 fn skip_whitespace<R: BufRead>(p: &mut Parser<R>) -> bool {
     let mut result: bool = false;
     loop {
