@@ -1,3 +1,84 @@
+use std::io::BufRead;
+
+fn read_char(reader: &mut impl BufRead) -> Option<char> {
+    loop {
+        let buf = reader.fill_buf().ok()?;
+        if buf.is_empty() {
+            return None;
+        }
+        match std::str::from_utf8(buf) {
+            Ok(s) => {
+                let ch = s.chars().next().unwrap();
+                let n = ch.len_utf8();
+                reader.consume(n);
+                return Some(ch);
+            }
+            Err(e) => {
+                let valid = e.valid_up_to();
+                if valid > 0 {
+                    let ch = unsafe { std::str::from_utf8_unchecked(&buf[..valid]) }
+                        .chars()
+                        .next()
+                        .unwrap();
+                    let n = ch.len_utf8();
+                    reader.consume(n);
+                    return Some(ch);
+                }
+                reader.consume(1);
+            }
+        }
+    }
+}
+
+pub struct Parser<R: BufRead> {
+    reader: R,
+    pub pos: Position,
+    buf: [Option<char>; 2],
+}
+
+impl<R: BufRead> Parser<R> {
+    pub fn new(reader: R) -> Self {
+        let mut result = Self {
+            reader,
+            pos: Position::start(),
+            buf: [None, None],
+        };
+        result.buf[0] = read_char(&mut result.reader);
+        result.buf[1] = read_char(&mut result.reader);
+        result
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.buf[0].is_none()
+    }
+
+    pub fn at(&self) -> Option<char> {
+        self.buf[0]
+    }
+
+    pub fn peek(&self) -> Option<char> {
+        self.buf[1]
+    }
+
+    pub fn inc(&mut self) -> Option<char> {
+        let ch = self.buf[0].take();
+        self.buf[0] = self.buf[1].take();
+        self.buf[1] = read_char(&mut self.reader);
+        if let Some(c) = ch {
+            self.pos.inc_mut(c);
+        }
+        ch
+    }
+
+    pub fn try_inc(&mut self, expected: char) -> Result<(), SexParserError> {
+        match self.inc() {
+            Some(ch) if ch == expected => Ok(()),
+            Some(ch) => Err(SexParserError::new_unexpected_char(self.pos, ch)),
+            None => Err(SexParserError::new_unexpected_eof(self.pos)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum MalformedHexCode {
     InvalidLeft { left: char },
