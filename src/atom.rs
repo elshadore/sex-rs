@@ -1,3 +1,4 @@
+use crate::printer;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +68,11 @@ impl fmt::Display for SexError {
                 )
             }
             SexError::Overflow { expected, value } => {
-                write!(f, "overflow: value '{}' does not fit in {}", value, expected)
+                write!(
+                    f,
+                    "overflow: value '{}' does not fit in {}",
+                    value, expected
+                )
             }
             SexError::ExpectedAtom => write!(f, "expected atom, reached end of input"),
             SexError::ExpectedFinished => {
@@ -266,5 +271,17 @@ impl Atom {
             expected: AtomTy::List,
             found: self.clone(),
         })
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        printer::print_atom(f, self)
+    }
+}
+
+impl fmt::Display for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        printer::print_number(f, self)
     }
 }
