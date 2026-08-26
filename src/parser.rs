@@ -381,50 +381,56 @@ fn parse_expression<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserAtom
     Ok(result)
 }
 
-pub fn parse_exprlist_str(input: impl AsRef<str>) -> Result<List, SexParserError> {
+/// Parses a list of expressions from a string.
+/// | Input         | Output |
+/// | :------------ | -----: |
+/// | foo           | (foo)  |
+/// | (foo bar baz) | ((foo bar bar)) |
+/// | (foo bar) baz | ((foo bar) baz) |
+/// |               | () |
+pub fn parse_exprlist_str(input: impl AsRef<str>, file: Option<String>) -> Result<List, SexParserError> {
     let s = input.as_ref();
     let cursor = Cursor::new(s.as_bytes());
-    let mut parser = Parser::new(cursor);
+    let mut parser = Parser::new(cursor, file);
     parse_exprlist(&mut parser)
 }
 
-pub fn parse_exprlist_file(
-    input: impl AsRef<str>,
-    file: impl Into<String>,
-) -> Result<List, SexParserError> {
-    let s = input.as_ref();
-    let cursor = Cursor::new(s.as_bytes());
-    let mut parser = Parser::new(cursor);
-    parser.file = Some(file.into());
-    parse_exprlist(&mut parser)
-}
-
-pub fn parse_exprlist_reader(reader: impl Read) -> Result<List, SexParserError> {
+/// Parses a list of expressions from a generic reader.
+/// | Input         | Output |
+/// | :------------ | -----: |
+/// | foo           | (foo)  |
+/// | (foo bar baz) | ((foo bar bar)) |
+/// | (foo bar) baz | ((foo bar) baz) |
+/// |               | () |
+pub fn parse_exprlist_reader(reader: impl Read, file: Option<String>) -> Result<List, SexParserError> {
     let reader = BufReader::new(reader);
-    let mut parser = Parser::new(reader);
+    let mut parser = Parser::new(reader, file);
     parse_exprlist(&mut parser)
 }
 
-pub fn parse_expression_str(input: impl AsRef<str>) -> Result<Atom, SexParserAtomError> {
+/// Parses a single expression from a string.
+/// | Input         | Output |
+/// | :------------ | -----: |
+/// | foo           | foo    |
+/// | (foo bar baz) | (foo bar bar) |
+/// | (foo bar) baz | `Error` |
+/// |               | `Error` |
+pub fn parse_expression_str(input: impl AsRef<str>, file: Option<String>) -> Result<Atom, SexParserAtomError> {
     let s = input.as_ref();
     let cursor = Cursor::new(s.as_bytes());
-    let mut parser = Parser::new(cursor);
+    let mut parser = Parser::new(cursor, file);
     parse_expression(&mut parser)
 }
 
-pub fn parse_expression_file(
-    input: impl AsRef<str>,
-    file: impl Into<String>,
-) -> Result<Atom, SexParserAtomError> {
-    let s = input.as_ref();
-    let cursor = Cursor::new(s.as_bytes());
-    let mut parser = Parser::new(cursor);
-    parser.file = Some(file.into());
-    parse_expression(&mut parser)
-}
-
-pub fn parse_expression_reader(reader: impl Read) -> Result<Atom, SexParserAtomError> {
+/// Parses a single expression from a generic reader.
+/// | Input         | Output |
+/// | :------------ | -----: |
+/// | foo           | foo    |
+/// | (foo bar baz) | (foo bar bar) |
+/// | (foo bar) baz | `Error` |
+/// |               | `Error` |
+pub fn parse_expression_reader(reader: impl Read, file: Option<String>) -> Result<Atom, SexParserAtomError> {
     let reader = BufReader::new(reader);
-    let mut parser = Parser::new(reader);
+    let mut parser = Parser::new(reader, file);
     parse_expression(&mut parser)
 }

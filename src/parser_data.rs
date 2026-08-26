@@ -38,11 +38,11 @@ pub struct Parser<R: BufRead> {
 }
 
 impl<R: BufRead> Parser<R> {
-    pub fn new(reader: R) -> Self {
+    pub fn new(reader: R, file: Option<String>) -> Self {
         let mut result = Self {
             reader,
             pos: Position::start(),
-            file: None,
+            file,
             buf: [None, None],
         };
         result.buf[0] = read_char(&mut result.reader);
