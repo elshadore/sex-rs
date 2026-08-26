@@ -3,10 +3,10 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Nice Parser Errors like *compilation* buffer format
-  - Prints line number, char number, full line print, error print.
-  - Parser `Metadata` for file name 
-  - Seperate Logical Parser Error that are `Copy` and `Clone`
+- [ ] Printer
+  - Normal
+  - Pretty Printing
+  Implement Display
 - [ ] Serializer
   - IntoSex Trait
 - [ ] Redo Macro Derive

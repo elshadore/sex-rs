@@ -61,14 +61,14 @@ enum Command {
 
 #[test]
 fn struct_positional() {
-    let atom = parse_expression_str("(10 20)").unwrap();
+    let atom = parse_expression_str("(10 20)", None).unwrap();
     let p: Point = Point::from_sex(&atom).unwrap();
     assert_eq!(p, Point { x: 10, y: 20 });
 }
 
 #[test]
 fn struct_positional_single() {
-    let atom = parse_expression_str("(99)").unwrap();
+    let atom = parse_expression_str("(99)", None).unwrap();
     let err = Point::from_sex(&atom).unwrap_err();
     assert!(matches!(err, SexError::ExpectedAtom));
 }
@@ -76,7 +76,7 @@ fn struct_positional_single() {
 
 #[test]
 fn struct_keyword() {
-    let atom = parse_expression_str("(\"test\" :width 800)").unwrap();
+    let atom = parse_expression_str("(\"test\" :width 800)", None).unwrap();
     let c: Config = Config::from_sex(&atom).unwrap();
     assert_eq!(c.name, "test");
     assert_eq!(c.width, 800);
@@ -85,7 +85,7 @@ fn struct_keyword() {
 
 #[test]
 fn struct_keyword_default_used() {
-    let atom = parse_expression_str("(\"test\" :width 800 :height 200)").unwrap();
+    let atom = parse_expression_str("(\"test\" :width 800 :height 200)", None).unwrap();
     let c: Config = Config::from_sex(&atom).unwrap();
     assert_eq!(c.name, "test");
     assert_eq!(c.width, 800);
@@ -94,7 +94,7 @@ fn struct_keyword_default_used() {
 
 #[test]
 fn struct_keyword_missing_optional() {
-    let atom = parse_expression_str("(\"test\")").unwrap();
+    let atom = parse_expression_str("(\"test\")", None).unwrap();
     let err = Config::from_sex(&atom).unwrap_err();
     assert!(matches!(err, SexError::MissingField { .. }));
 }
@@ -102,7 +102,7 @@ fn struct_keyword_missing_optional() {
 
 #[test]
 fn struct_optional_keyword_present() {
-    let atom = parse_expression_str("(\"hello\" :label \"world\")").unwrap();
+    let atom = parse_expression_str("(\"hello\" :label \"world\")", None).unwrap();
     let o: OptionalFields = OptionalFields::from_sex(&atom).unwrap();
     assert_eq!(o.name, "hello");
     assert_eq!(o.label, Some("world".into()));
@@ -110,7 +110,7 @@ fn struct_optional_keyword_present() {
 
 #[test]
 fn struct_optional_keyword_absent() {
-    let atom = parse_expression_str("(\"hello\")").unwrap();
+    let atom = parse_expression_str("(\"hello\")", None).unwrap();
     let o: OptionalFields = OptionalFields::from_sex(&atom).unwrap();
     assert_eq!(o.name, "hello");
     assert_eq!(o.label, None);
@@ -119,7 +119,7 @@ fn struct_optional_keyword_absent() {
 
 #[test]
 fn enum_tuple_primitive() {
-    let atom = parse_expression_str("(circle 5)").unwrap();
+    let atom = parse_expression_str("(circle 5)", None).unwrap();
     let s: Shape = Shape::from_sex(&atom).unwrap();
     assert_eq!(s, Shape::Circle(5));
 }
@@ -127,7 +127,7 @@ fn enum_tuple_primitive() {
 
 #[test]
 fn enum_tuple_complex() {
-    let atom = parse_expression_str("(point 1 2)").unwrap();
+    let atom = parse_expression_str("(point 1 2)", None).unwrap();
     let s: Shape = Shape::from_sex(&atom).unwrap();
     assert_eq!(s, Shape::Pt(Point { x: 1, y: 2 }));
 }
@@ -135,7 +135,7 @@ fn enum_tuple_complex() {
 
 #[test]
 fn enum_named_positional_only() {
-    let atom = parse_expression_str("(rect 100 200)").unwrap();
+    let atom = parse_expression_str("(rect 100 200)", None).unwrap();
     let s: Shape = Shape::from_sex(&atom).unwrap();
     assert_eq!(s, Shape::Rect {
         width: 100,
@@ -147,7 +147,7 @@ fn enum_named_positional_only() {
 
 #[test]
 fn enum_named_with_keywords() {
-    let atom = parse_expression_str("(rect 100 200 :x 10 :y 20)").unwrap();
+    let atom = parse_expression_str("(rect 100 200 :x 10 :y 20)", None).unwrap();
     let s: Shape = Shape::from_sex(&atom).unwrap();
     assert_eq!(s, Shape::Rect {
         width: 100,
@@ -159,7 +159,7 @@ fn enum_named_with_keywords() {
 
 #[test]
 fn enum_named_partial_keywords() {
-    let atom = parse_expression_str("(rect 100 200 :x 5)").unwrap();
+    let atom = parse_expression_str("(rect 100 200 :x 5)", None).unwrap();
     let s: Shape = Shape::from_sex(&atom).unwrap();
     assert_eq!(s, Shape::Rect {
         width: 100,
@@ -172,7 +172,7 @@ fn enum_named_partial_keywords() {
 
 #[test]
 fn enum_unit_variant() {
-    let atom = parse_expression_str("(noop)").unwrap();
+    let atom = parse_expression_str("(noop)", None).unwrap();
     let c: Command = Command::from_sex(&atom).unwrap();
     assert_eq!(c, Command::Noop);
 }
@@ -180,7 +180,7 @@ fn enum_unit_variant() {
 
 #[test]
 fn enum_tuple_multiple() {
-    let atom = parse_expression_str("(jump 3 4)").unwrap();
+    let atom = parse_expression_str("(jump 3 4)", None).unwrap();
     let c: Command = Command::from_sex(&atom).unwrap();
     assert_eq!(c, Command::Jump(3, 4));
 }
@@ -188,7 +188,7 @@ fn enum_tuple_multiple() {
 
 #[test]
 fn enum_named_move() {
-    let atom = parse_expression_str("(move :dx 1 :dy 2)").unwrap();
+    let atom = parse_expression_str("(move :dx 1 :dy 2)", None).unwrap();
     let c: Command = Command::from_sex(&atom).unwrap();
     assert_eq!(c, Command::Move { dx: 1, dy: 2 });
 }
@@ -196,21 +196,21 @@ fn enum_named_move() {
 
 #[test]
 fn enum_unknown_variant() {
-    let atom = parse_expression_str("(triangle 5)").unwrap();
+    let atom = parse_expression_str("(triangle 5)", None).unwrap();
     let err = Shape::from_sex(&atom).unwrap_err();
     assert!(matches!(err, SexError::UnknownVariant { .. }));
 }
 
 #[test]
 fn enum_empty_list() {
-    let atom = parse_expression_str("()").unwrap();
+    let atom = parse_expression_str("()", None).unwrap();
     let err = Shape::from_sex(&atom).unwrap_err();
     assert!(matches!(err, SexError::TypeError { .. }));
 }
 
 #[test]
 fn enum_first_element_not_symbol() {
-    let atom = parse_expression_str("(42)").unwrap();
+    let atom = parse_expression_str("(42)", None).unwrap();
     let err = Shape::from_sex(&atom).unwrap_err();
     assert!(matches!(err, SexError::TypeError { .. }));
 }
@@ -232,7 +232,7 @@ fn enum_from_non_list() {
 
 #[test]
 fn enum_rejects_positional_after_keyword() {
-    let atom = parse_expression_str("(rect 100 :width 200 300)").unwrap();
+    let atom = parse_expression_str("(rect 100 :width 200 300)", None).unwrap();
     let err = Shape::from_sex(&atom).unwrap_err();
     assert!(matches!(
         err,
@@ -245,7 +245,7 @@ fn enum_rejects_positional_after_keyword() {
 
 #[test]
 fn struct_rejects_positional_after_keyword() {
-    let atom = parse_expression_str("(\"test\" :width 800 100)").unwrap();
+    let atom = parse_expression_str("(\"test\" :width 800 100)", None).unwrap();
     let err = Config::from_sex(&atom).unwrap_err();
     assert!(matches!(
         err,

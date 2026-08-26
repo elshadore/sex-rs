@@ -125,7 +125,7 @@ fn enter_list_eof() {
 
 #[test]
 fn parse_then_view() {
-    let atoms = sex::parse_exprlist_str("(defexample foo :src \"bar.sex\")").unwrap();
+    let atoms = sex::parse_exprlist_str("(defexample foo :src \"bar.sex\")", None).unwrap();
     let mut v = AtomView::new(&atoms);
     let mut list = v.enter_list().unwrap();
     assert_eq!(list.pop().unwrap().as_text().unwrap().contents, "defexample");
@@ -137,7 +137,7 @@ fn parse_then_view() {
 
 #[test]
 fn parse_multiple_toplevel_forms() {
-    let atoms = sex::parse_exprlist_str("(a 1) (b 2)").unwrap();
+    let atoms = sex::parse_exprlist_str("(a 1) (b 2)", None).unwrap();
     let mut v = AtomView::new(&atoms);
 
     let mut first = v.enter_list().unwrap();
@@ -153,7 +153,7 @@ fn parse_multiple_toplevel_forms() {
 
 #[test]
 fn view_remaining_after_partial_consumption() {
-    let atoms = sex::parse_exprlist_str("foo bar baz").unwrap();
+    let atoms = sex::parse_exprlist_str("foo bar baz", None).unwrap();
     let mut v = AtomView::new(&atoms);
     v.pop();
     assert_eq!(v.remaining(), 2);

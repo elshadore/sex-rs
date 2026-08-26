@@ -2,7 +2,7 @@ use sex::{Atom, AtomTy, KeywordView, Number, SexError, parse_expression_str};
 
 #[test]
 fn keyword_view_barred_keyword_key() {
-    let atom = parse_expression_str("(name :|my key| 5)").unwrap();
+    let atom = parse_expression_str("(name :|my key| 5)", None).unwrap();
     let list = atom.try_as_list().unwrap();
     assert_eq!(list[0], Atom::symbol("name"));
     let kv = KeywordView::from_slice(&list[1..]).unwrap();
@@ -161,7 +161,7 @@ fn keyword_view_iter() {
 
 #[test]
 fn keyword_view_from_parsed_list() {
-    let atom = sex::parse_expression_str("(:x 10 :y 20)").unwrap();
+    let atom = sex::parse_expression_str("(:x 10 :y 20)", None).unwrap();
     let list = atom.as_list().unwrap();
     let kv = KeywordView::from_slice(list).unwrap();
     assert_eq!(kv.required::<i64>("x").unwrap(), 10);
