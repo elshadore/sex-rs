@@ -1,16 +1,21 @@
 use crate::FromSex;
 use crate::atom::{Atom, AtomTy, SexError, Text, TextTy};
+use crate::list::List;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct AtomView<'a> {
+pub struct ListView<'a> {
     atoms: &'a [Atom],
     curr: usize,
 }
 
-impl<'a> AtomView<'a> {
-    pub fn new(atoms: &'a [Atom]) -> Self {
-        AtomView { atoms, curr: 0 }
+impl<'a> ListView<'a> {
+    pub fn new(list: &'a List) -> Self {
+        ListView { atoms: list.slice(), curr: 0 }
+    }
+
+    pub fn new_slice(atoms: &'a [Atom]) -> Self {
+        ListView { atoms, curr: 0 }
     }
 
     /// Returns the currently selected atom.
@@ -90,10 +95,10 @@ impl<'a> AtomView<'a> {
         &self.atoms[self.curr..]
     }
 
-    pub fn enter_list(&mut self) -> Result<AtomView<'a>, SexError> {
+    pub fn enter_list(&mut self) -> Result<ListView<'a>, SexError> {
         let atom = self.try_pop()?;
         match atom {
-            Atom::List(elements) => Ok(AtomView::new(elements)),
+            Atom::List(elements) => Ok(ListView::new(elements)),
             other => Err(SexError::TypeError {
                 expected: AtomTy::List,
                 found: other.clone(),
@@ -138,7 +143,7 @@ pub struct KeywordView<'a> {
 
 impl<'a> KeywordView<'a> {
     pub fn from_slice(atoms: &'a [Atom]) -> Result<Self, SexError> {
-        AtomView::new(atoms).into_keywords()
+        ListView::new_slice(atoms).into_keywords()
     }
 
     pub fn contains_key(&self, name: &str) -> bool {

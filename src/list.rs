@@ -37,6 +37,16 @@ impl List {
     pub fn is_empty(&self) -> bool {
         self.vec.is_empty()
     }
+
+    pub fn slice(&self) -> &[Atom] {
+        &self.vec
+    }
+}
+
+impl AsRef<[Atom]> for List {
+    fn as_ref(&self) -> &[Atom] {
+        &self.vec
+    }
 }
 
 impl Deref for List {

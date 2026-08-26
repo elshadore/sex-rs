@@ -51,7 +51,7 @@ fn keyword_view_from_atom_view() {
         Atom::keyword("b"),
         Atom::Number(Number::Integer(2)),
     ];
-    let view = sex::AtomView::new(&atoms);
+    let view = sex::ListView::new_slice(&atoms);
     let kv = view.into_keywords().unwrap();
     assert_eq!(kv.required::<i64>("a").unwrap(), 1);
     assert_eq!(kv.required::<i64>("b").unwrap(), 2);

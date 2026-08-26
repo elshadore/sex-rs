@@ -107,7 +107,7 @@ fn derive_struct(name: &syn::Ident, fields: &Fields) -> proc_macro2::TokenStream
                     }),
                 };
                 
-                let mut view = sex::AtomView::new(list);
+                let mut view = sex::ListView::new(list);
                 #(#positional_parsers)*
                 let keyword_map = view.into_keywords()?;
                 #(#keyword_parsers)*
@@ -159,7 +159,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                         }
                     } else {
                         quote! {
-                            let mut view = sex::AtomView::new(rest);
+                            let mut view = sex::ListView::new_slice(rest);
                             let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
                             view.into_keywords()?;
                             Ok(#name::#variant_name(#field_name))
@@ -177,7 +177,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                         inits.push(quote! { #field_name });
                     }
                     quote! {
-                        let mut view = sex::AtomView::new(rest);
+                        let mut view = sex::ListView::new_slice(rest);
                         #(#parsers)*
                         view.into_keywords()?;
                         Ok(#name::#variant_name(#(#inits),*))
@@ -226,14 +226,14 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                 
                 if keyword_parsers.is_empty() {
                     quote! {
-                        let mut view = sex::AtomView::new(rest);
+                        let mut view = sex::ListView::new_slice(rest);
                         #(#positional_parsers)*
                         view.into_keywords()?;
                         Ok(#name::#variant_name { #(#inits),* })
                     }
                 } else {
                     quote! {
-                        let mut view = sex::AtomView::new(rest);
+                        let mut view = sex::ListView::new_slice(rest);
                         #(#positional_parsers)*
                         let keyword_map = view.into_keywords()?;
                         #(#keyword_parsers)*

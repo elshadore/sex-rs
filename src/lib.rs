@@ -16,7 +16,7 @@ pub use parser_data::{
     is_symbol_char,
 };
 pub use sex_trait::FromSex;
-pub use view::{AtomView, KeywordView};
+pub use view::{ListView, KeywordView};
 
 #[cfg(feature = "derive")]
 pub use sex_derive::Sex;

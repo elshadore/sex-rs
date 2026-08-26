@@ -1,8 +1,8 @@
-use sex::{List, Atom, AtomView, Number, SexError};
+use sex::{List, Atom, ListView, Number, SexError};
 
 #[test]
 fn empty_view() {
-    let v = AtomView::new(&[]);
+    let v = ListView::new_slice(&[]);
     assert!(v.is_finished());
     assert_eq!(v.remaining(), 0);
     assert_eq!(v.peek(), None);
@@ -12,7 +12,7 @@ fn empty_view() {
 #[test]
 fn single_atom() {
     let atoms = [Atom::symbol("hello")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     assert!(!v.is_finished());
     assert_eq!(v.peek(), None);
     assert_eq!(v.pop(), Some(&Atom::symbol("hello")));
@@ -23,7 +23,7 @@ fn single_atom() {
 #[test]
 fn multiple_atoms() {
     let atoms = [Atom::symbol("a"), Atom::symbol("b"), Atom::symbol("c")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     assert_eq!(v.remaining(), 3);
     assert_eq!(v.pop(), Some(&Atom::symbol("a")));
     assert_eq!(v.remaining(), 2);
@@ -38,7 +38,7 @@ fn multiple_atoms() {
 #[test]
 fn at_does_not_advance() {
     let atoms = [Atom::symbol("a"), Atom::symbol("b")];
-    let v = AtomView::new(&atoms);
+    let v = ListView::new_slice(&atoms);
     assert_eq!(v.at(), Some(&Atom::symbol("a")));
     assert_eq!(v.at(), Some(&Atom::symbol("a")));
     assert_eq!(v.remaining(), 2);
@@ -47,7 +47,7 @@ fn at_does_not_advance() {
 #[test]
 fn peek_does_not_advance() {
     let atoms = [Atom::symbol("first"), Atom::symbol("second")];
-    let v = AtomView::new(&atoms);
+    let v = ListView::new_slice(&atoms);
     assert_eq!(v.peek(), Some(&Atom::symbol("second")));
     assert_eq!(v.peek(), Some(&Atom::symbol("second")));
     assert_eq!(v.remaining(), 2);
@@ -57,7 +57,7 @@ fn peek_does_not_advance() {
 #[test]
 fn skip_partial() {
     let atoms = [Atom::symbol("a"), Atom::symbol("b"), Atom::symbol("c")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     v.skip_n(2);
     assert_eq!(v.pop(), Some(&Atom::symbol("c")));
 }
@@ -65,7 +65,7 @@ fn skip_partial() {
 #[test]
 fn skip_past_end() {
     let atoms = [Atom::symbol("a")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     v.skip_n(10);
     assert!(v.is_finished());
     assert_eq!(v.pop(), None);
@@ -74,7 +74,7 @@ fn skip_past_end() {
 #[test]
 fn skip_zero() {
     let atoms = [Atom::symbol("a")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     v.skip_n(0);
     assert_eq!(v.pop(), Some(&Atom::symbol("a")));
 }
@@ -82,7 +82,7 @@ fn skip_zero() {
 #[test]
 fn remaining_slice_after_consumption() {
     let atoms = [Atom::symbol("a"), Atom::symbol("b"), Atom::symbol("c")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     v.pop();
     assert_eq!(v.remaining_slice(), &[Atom::symbol("b"), Atom::symbol("c")]);
 }
@@ -90,7 +90,7 @@ fn remaining_slice_after_consumption() {
 #[test]
 fn enter_list_empty() {
     let atoms = [Atom::List(List::from(vec![]))];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     let inner = v.enter_list().unwrap();
     assert!(inner.is_finished());
     assert!(v.is_finished());
@@ -99,7 +99,7 @@ fn enter_list_empty() {
 #[test]
 fn enter_list_with_elements() {
     let atoms = [Atom::List(List::from(vec![Atom::symbol("a"), Atom::symbol("b")]))];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     let mut inner = v.enter_list().unwrap();
     assert_eq!(inner.pop(), Some(&Atom::symbol("a")));
     assert_eq!(inner.pop(), Some(&Atom::symbol("b")));
@@ -110,14 +110,14 @@ fn enter_list_with_elements() {
 #[test]
 fn enter_list_not_a_list() {
     let atoms = [Atom::symbol("foo")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     let err = v.enter_list().unwrap_err();
     assert!(matches!(err, SexError::TypeError { .. }));
 }
 
 #[test]
 fn enter_list_eof() {
-    let mut v = AtomView::new(&[]);
+    let mut v = ListView::new_slice(&[]);
     let err = v.enter_list().unwrap_err();
     assert!(matches!(err, SexError::ExpectedAtom));
 }
@@ -126,7 +126,7 @@ fn enter_list_eof() {
 #[test]
 fn parse_then_view() {
     let atoms = sex::parse_exprlist_str("(defexample foo :src \"bar.sex\")", None).unwrap();
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     let mut list = v.enter_list().unwrap();
     assert_eq!(list.pop().unwrap().as_text().unwrap().contents, "defexample");
     assert_eq!(list.pop().unwrap().as_text().unwrap().contents, "foo");
@@ -138,7 +138,7 @@ fn parse_then_view() {
 #[test]
 fn parse_multiple_toplevel_forms() {
     let atoms = sex::parse_exprlist_str("(a 1) (b 2)", None).unwrap();
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
 
     let mut first = v.enter_list().unwrap();
     assert_eq!(first.pop().unwrap().as_text().unwrap().contents, "a");
@@ -154,7 +154,7 @@ fn parse_multiple_toplevel_forms() {
 #[test]
 fn view_remaining_after_partial_consumption() {
     let atoms = sex::parse_exprlist_str("foo bar baz", None).unwrap();
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     v.pop();
     assert_eq!(v.remaining(), 2);
     v.pop();
@@ -169,7 +169,7 @@ fn keyword_then_value_pattern() {
         Atom::keyword("height"),
         Atom::Number(Number::Integer(600)),
     ];
-    let v = AtomView::new(&atoms);
+    let v = ListView::new_slice(&atoms);
     let kw = v.into_keywords().unwrap();
     assert_eq!(kw.get("width"), Some(&Atom::Number(Number::Integer(800))));
     assert_eq!(kw.get("height"), Some(&Atom::Number(Number::Integer(600))));
@@ -179,14 +179,14 @@ fn keyword_then_value_pattern() {
 #[test]
 fn try_at_returns_atom() {
     let atoms = [Atom::symbol("hello")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     assert_eq!(v.try_at().unwrap(), &Atom::symbol("hello"));
 }
 
 #[test]
 fn try_at_at_end_errors() {
     let empty: &[Atom] = &[];
-    let mut v = AtomView::new(empty);
+    let mut v = ListView::new_slice(empty);
     let err = v.try_at().unwrap_err();
     assert!(matches!(err, SexError::ExpectedAtom));
 }
@@ -194,7 +194,7 @@ fn try_at_at_end_errors() {
 #[test]
 fn try_pop_returns_atom() {
     let atoms = [Atom::symbol("hello")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     assert_eq!(v.try_pop().unwrap(), &Atom::symbol("hello"));
     assert!(v.is_finished());
 }
@@ -202,7 +202,7 @@ fn try_pop_returns_atom() {
 #[test]
 fn try_pop_at_end_errors() {
     let empty: &[Atom] = &[];
-    let mut v = AtomView::new(empty);
+    let mut v = ListView::new_slice(empty);
     let err = v.try_pop().unwrap_err();
     assert!(matches!(err, SexError::ExpectedAtom));
 }
@@ -210,14 +210,14 @@ fn try_pop_at_end_errors() {
 #[test]
 fn expect_finished_ok() {
     let empty: &[Atom] = &[];
-    let v = AtomView::new(empty);
+    let v = ListView::new_slice(empty);
     v.expect_finished().unwrap();
 }
 
 #[test]
 fn expect_finished_errors_on_remaining() {
     let atoms = [Atom::symbol("x")];
-    let v = AtomView::new(&atoms);
+    let v = ListView::new_slice(&atoms);
     let err = v.expect_finished().unwrap_err();
     assert!(matches!(err, SexError::ExpectedFinished));
 }
@@ -225,7 +225,7 @@ fn expect_finished_errors_on_remaining() {
 #[test]
 fn expect_last_returns_atom() {
     let atoms = [Atom::symbol("x")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     assert_eq!(v.expect_last().unwrap(), &Atom::symbol("x"));
     assert!(v.is_finished());
 }
@@ -233,7 +233,7 @@ fn expect_last_returns_atom() {
 #[test]
 fn expect_last_errors_on_empty() {
     let empty: &[Atom] = &[];
-    let mut v = AtomView::new(empty);
+    let mut v = ListView::new_slice(empty);
     let err = v.expect_last().unwrap_err();
     assert!(matches!(err, SexError::ExpectedAtom));
 }
@@ -241,7 +241,7 @@ fn expect_last_errors_on_empty() {
 #[test]
 fn expect_last_errors_on_more_remaining() {
     let atoms = [Atom::symbol("a"), Atom::symbol("b")];
-    let mut v = AtomView::new(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     let err = v.expect_last().unwrap_err();
     assert!(matches!(err, SexError::ExpectedFinished));
 }
