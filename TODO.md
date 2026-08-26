@@ -13,6 +13,7 @@ Both symbols and strings have to be valid unicode characters.
   derive changes rust symbols `foo_bar` to lisp symbols `foo-bar`
 - [ ] default in the declarative macro should use the Default trait if no value is provided
 - [ ] Look at *all* Error Messages to see if they make sense.
+  - Unicode has bad errors
 - [ ] Test check.
   - Ensure good coverage.
   - Remove useless tests.

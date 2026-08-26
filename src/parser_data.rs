@@ -75,16 +75,8 @@ impl<R: BufRead> Parser<R> {
     pub fn try_inc(&mut self, expected: char) -> Result<(), SexParserError> {
         match self.inc() {
             Some(c) if c == expected => Ok(()),
-            Some(found) => Err(SexParserError {
-                pos: self.pos,
-                file: self.file.clone(),
-                kind: SexParserErrorKind::ExpectedChar { expected, found },
-            }),
-            None => Err(SexParserError {
-                pos: self.pos,
-                file: self.file.clone(),
-                kind: SexParserErrorKind::UnexpectedEof,
-            }),
+            Some(found) => err!(self, ExpectedChar { expected, found }),
+            None => err!(self, UnexpectedEof),
         }
     }
 

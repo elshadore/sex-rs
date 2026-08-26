@@ -38,14 +38,14 @@ fn read_list<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
 
     loop {
         match p.at() {
-            None => return Err(p.error(p.pos, SexParserErrorKind::UnterminatedList)),
+            None => return err!(p, UnterminatedList),
             Some(')') => {
                 p.inc();
                 break;
             }
             Some(c) => {
                 if !first && !whitespace {
-                    return Err(p.error(p.pos, SexParserErrorKind::ExpectedWhitespace(c)));
+                    return err!(p, ExpectedWhitespace(c));
                 }
                 list.push(read_atom(p)?);
             }
@@ -68,28 +68,16 @@ fn read_hex_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserError
     match read_hex_digit(p) {
         Ok(hi) => match read_hex_digit(p) {
             Ok(lo) => Ok(char::from((hi << 4) | lo)),
-            Err(HexError::Invalid(right)) => Err(p.error(
-                p.pos,
-                SexParserErrorKind::MalformedHexEscape(MalformedHexCode::InvalidRight {
+            Err(HexError::Invalid(right)) => err!(p, MalformedHexEscape(MalformedHexCode::InvalidRight {
                     left: hi.into(),
                     right,
-                }),
-            )),
-            Err(HexError::NoChar) => Err(p.error(
-                p.pos,
-                SexParserErrorKind::MalformedHexEscape(MalformedHexCode::MissingRight {
+                })),
+            Err(HexError::NoChar) => err!(p, MalformedHexEscape(MalformedHexCode::MissingRight {
                     left: hi.into(),
-                }),
-            )),
+                })),
         },
-        Err(HexError::Invalid(left)) => Err(p.error(
-            p.pos,
-            SexParserErrorKind::MalformedHexEscape(MalformedHexCode::InvalidLeft { left }),
-        )),
-        Err(HexError::NoChar) => Err(p.error(
-            p.pos,
-            SexParserErrorKind::MalformedHexEscape(MalformedHexCode::MissingLeft),
-        )),
+        Err(HexError::Invalid(left)) => err!(p, MalformedHexEscape(MalformedHexCode::InvalidLeft { left })),
+        Err(HexError::NoChar) => err!(p, MalformedHexEscape(MalformedHexCode::MissingLeft)),
     }
 }
 
@@ -99,7 +87,7 @@ fn read_unicode_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserE
     match p.inc() {
         Some(c) => {
             if c != '{' {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape(c)));
+                return err!(p, MalformedUnicodeEscape(c));
             }
         }
         None => {
@@ -114,22 +102,22 @@ fn read_unicode_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserE
                 digits += 1;
             }
             Some(ch) if ch.is_ascii_hexdigit() => {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape(ch)));
+                return err!(p, MalformedUnicodeEscape(ch));
             }
             Some(ch) => {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape(ch)));
+                return err!(p, MalformedUnicodeEscape(ch));
             }
             None => {
-                return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape('\0')));
+            return err!(p, MalformedUnicodeEscape('\0'));
             }
         }
     }
     if digits == 0 {
-        return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape('\0')));
+        return err!(p, MalformedUnicodeEscape('\0'));
     }
     match char::from_u32(value) {
         Some(ch) => Ok(ch),
-        None => Err(p.error(p.pos, SexParserErrorKind::InvalidUnicodeChar(value))),
+        None => err!(p, InvalidUnicodeChar(value)),
     }
 }
 
@@ -138,7 +126,7 @@ fn read_string<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     let mut s = String::new();
     loop {
         match p.inc() {
-            None => return Err(p.error(p.pos, SexParserErrorKind::UnterminatedString)),
+            None => return err!(p, UnterminatedString),
             Some('"') => {
                 return Ok(Atom::Text(Text {
                     ty: TextTy::String,
@@ -147,7 +135,7 @@ fn read_string<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
             }
             Some('\\') => {
                 let esc = match p.inc() {
-                    None => return Err(p.error(p.pos, SexParserErrorKind::UnterminatedString)),
+                    None => return err!(p, UnterminatedString),
                     Some('"') => '"',
                     Some('\\') => '\\',
                     Some('n') => '\n',
@@ -157,7 +145,7 @@ fn read_string<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
                     Some('x') => read_hex_escape(p)?,
                     Some('u') => read_unicode_escape(p)?,
                     Some(ch) => {
-                        return Err(p.error(p.pos, SexParserErrorKind::MalformedStringEscape(ch)));
+                        return err!(p, MalformedStringEscape(ch));
                     }
                 };
                 s.push(esc);
@@ -172,11 +160,11 @@ fn read_barred<R: BufRead>(p: &mut Parser<R>, ty: BarredTy) -> Result<Atom, SexP
     let mut name = String::new();
     loop {
         match p.inc() {
-            None => return Err(p.error(p.pos, SexParserErrorKind::UnterminatedBarSymbol)),
+            None => return err!(p, UnterminatedBarSymbol),
             Some('|') => break,
             Some('\\') => {
                 let esc = match p.inc() {
-                    None => return Err(p.error(p.pos, SexParserErrorKind::UnterminatedBarSymbol)),
+                    None => return err!(p, UnterminatedBarSymbol),
                     Some('"') => '"',
                     Some('|') => '|',
                     Some('\\') => '\\',
@@ -187,7 +175,7 @@ fn read_barred<R: BufRead>(p: &mut Parser<R>, ty: BarredTy) -> Result<Atom, SexP
                     Some('x') => read_hex_escape(p)?,
                     Some('u') => read_unicode_escape(p)?,
                     Some(ch) => {
-                        return Err(p.error(p.pos, SexParserErrorKind::MalformedBarEscape(ch)));
+                        return err!(p, MalformedBarEscape(ch));
                     }
                 };
                 name.push(esc);
@@ -218,7 +206,7 @@ fn read_keyword<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
         p.inc();
     }
     if name.is_empty() {
-        return Err(p.error(p.pos, SexParserErrorKind::EmptyKeyword));
+        return err!(p, EmptyKeyword);
     }
     Ok(Atom::Text(Text {
         ty: TextTy::Keyword,
@@ -348,7 +336,7 @@ fn read_number<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
 
 fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     match p.at() {
-        None => Err(p.error(p.pos, SexParserErrorKind::UnexpectedEof)),
+        None => err!(p, UnexpectedEof),
         Some('(') => read_list(p),
         Some('"') => read_string(p),
         Some(':') => read_keyword(p),
@@ -356,7 +344,7 @@ fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
         Some(ch) if ch == '-' && p.peek().is_some_and(|c| c.is_ascii_digit()) => read_number(p),
         Some(ch) if ch.is_ascii_digit() => read_number(p),
         Some(ch) if is_symbol_char(ch) => read_symbol(p),
-        Some(ch) => Err(p.error(p.pos, SexParserErrorKind::UnexpectedChar(ch))),
+        Some(ch) => err!(p, UnexpectedChar(ch)),
     }
 }
 
@@ -371,10 +359,7 @@ fn parse_exprlist<R: BufRead>(p: &mut Parser<R>) -> Result<List, SexParserError>
             break;
         }
         if !whitespace {
-            return Err(p.error(
-                p.pos,
-                SexParserErrorKind::ExpectedWhitespace(p.at().unwrap_or('\0')),
-            ));
+            return err!(p, ExpectedWhitespace(p.at().unwrap_or('\0')));
         }
         atoms.push(read_atom(p)?);
         whitespace = skip_whitespace(p);
