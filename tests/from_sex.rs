@@ -1,4 +1,8 @@
-use sex::{List, Atom, AtomTy, FromAtom, Number, SexError};
+use sex::{List, Atom, AtomTy, FromAtom, FromSex, ListView, Number, SexError};
+
+fn view_from(atoms: &[Atom]) -> ListView<'_> {
+    ListView::new_slice(atoms)
+}
 
 
 #[test]
@@ -153,13 +157,15 @@ fn from_sex_unit_err_on_text() {
 
 #[test]
 fn from_sex_option_none() {
-    let r: Option<i64> = Option::from_atom(&Atom::Nil).unwrap();
+    let mut view = view_from(&[Atom::Nil]);
+    let r: Option<i64> = FromSex::from_sex(&mut view).unwrap();
     assert_eq!(r, None);
 }
 
 #[test]
 fn from_sex_option_some() {
-    let r: Option<i64> = Option::from_atom(&Atom::Number(Number::Integer(99))).unwrap();
+    let mut view = view_from(&[Atom::Number(Number::Integer(99))]);
+    let r: Option<i64> = FromSex::from_sex(&mut view).unwrap();
     assert_eq!(r, Some(99));
 }
 

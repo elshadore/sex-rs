@@ -75,7 +75,7 @@ fn derive_struct_named(name: StructIdent, fields: &FieldsNamed) -> proc_macro2::
                 panic!("struct attribute `default`, cannot be used without a `keyword` attribute");
             }
             elements.push(quote! {
-                let #field_name: #field_ty = sex::FromAtom::from_atom(view.try_pop()?)?;
+                let #field_name: #field_ty = sex::FromSex::from_sex(view)?;
             });
         }
 
@@ -142,7 +142,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
                         let field_ty = &field.ty;
                         let field_name = format_ident!("field_{}", i);
                         parsers.push(quote! {
-                            let #field_name: #field_ty = sex::FromAtom::from_atom(view.try_pop()?)?;
+                            let #field_name: #field_ty = sex::FromSex::from_sex(view)?;
                         });
                         inits.push(quote! { #field_name });
                     }

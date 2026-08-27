@@ -9,6 +9,12 @@ pub trait FromSex: Sized {
     fn from_sex(view: &mut ListView) -> Result<Self, SexError>;
 }
 
+impl<T: FromAtom> FromSex for T {
+    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
+        Self::from_atom(view.try_pop()?)
+    }
+}
+
 macro_rules! impl_from_atom_int {
     ($($t:ty),* $(,)?) => {
         $(
@@ -26,12 +32,6 @@ macro_rules! impl_from_atom_int {
                             found: atom.clone(),
                         }),
                     }
-                }
-            }
-
-            impl FromSex for $t {
-                fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-                    Self::from_atom(view.try_pop()?)
                 }
             }
         )*
@@ -52,12 +52,6 @@ impl FromAtom for String {
     }
 }
 
-impl FromSex for String {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        Self::from_atom(view.try_pop()?)
-    }
-}
-
 impl FromAtom for f64 {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
@@ -68,12 +62,6 @@ impl FromAtom for f64 {
                 found: atom.clone(),
             }),
         }
-    }
-}
-
-impl FromSex for f64 {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        Self::from_atom(view.try_pop()?)
     }
 }
 
@@ -99,12 +87,6 @@ impl FromAtom for f32 {
     }
 }
 
-impl FromSex for f32 {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        Self::from_atom(view.try_pop()?)
-    }
-}
-
 impl FromAtom for bool {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
@@ -119,12 +101,6 @@ impl FromAtom for bool {
     }
 }
 
-impl FromSex for bool {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        Self::from_atom(view.try_pop()?)
-    }
-}
-
 impl FromAtom for () {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
@@ -133,21 +109,6 @@ impl FromAtom for () {
                 expected: AtomTy::Nil,
                 found: atom.clone(),
             }),
-        }
-    }
-}
-
-impl FromSex for () {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        Self::from_atom(view.try_pop()?)
-    }
-}
-
-impl<T: FromAtom> FromAtom for Option<T> {
-    fn from_atom(atom: &Atom) -> Result<Self, SexError> {
-        match atom {
-            Atom::Nil => Ok(None),
-            _ => Ok(Some(T::from_atom(atom)?)),
         }
     }
 }
@@ -164,20 +125,21 @@ impl<T: FromSex> FromSex for Option<T> {
     }
 }
 
-impl<T: FromAtom> FromAtom for Vec<T> {
+impl<T: FromSex> FromAtom for Vec<T> {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
-            Atom::List(list) => list.iter().map(|a| T::from_atom(a)).collect(),
+            Atom::List(list) => {
+                let mut view = ListView::new(list);
+                let mut result = Vec::new();
+                while !view.is_finished() {
+                    result.push(T::from_sex(&mut view)?);
+                }
+                Ok(result)
+            }
             _ => Err(SexError::TypeError {
                 expected: AtomTy::List,
                 found: atom.clone(),
             }),
         }
-    }
-}
-
-impl<T: FromAtom> FromSex for Vec<T> {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        view.remaining_slice().iter().map(|a| T::from_atom(a)).collect()
     }
 }

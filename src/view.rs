@@ -1,4 +1,4 @@
-use crate::FromAtom;
+use crate::FromSex;
 use crate::atom::{Atom, AtomTy, SexError, Text, TextTy};
 use crate::list::List;
 use std::collections::HashMap;
@@ -154,18 +154,24 @@ impl<'a> KeywordView<'a> {
         self.map.get(name).copied()
     }
 
-    pub fn required<T: FromAtom>(&self, name: &str) -> Result<T, SexError> {
+    pub fn required<T: FromSex>(&self, name: &str) -> Result<T, SexError> {
         match self.map.get(name) {
-            Some(atom) => T::from_atom(atom),
+            Some(atom) => {
+                let mut view = ListView::new_slice(std::slice::from_ref(atom));
+                T::from_sex(&mut view)
+            }
             None => Err(SexError::MissingField {
                 name: name.to_string(),
             }),
         }
     }
 
-    pub fn optional<T: FromAtom>(&self, name: &str) -> Result<Option<T>, SexError> {
+    pub fn optional<T: FromSex>(&self, name: &str) -> Result<Option<T>, SexError> {
         match self.map.get(name) {
-            Some(atom) => T::from_atom(atom).map(Some),
+            Some(atom) => {
+                let mut view = ListView::new_slice(std::slice::from_ref(atom));
+                T::from_sex(&mut view).map(Some)
+            }
             None => Ok(None),
         }
     }
