@@ -8,19 +8,25 @@ enum Accessor {
 }
 
 pub fn expand_into_sex(name: &syn::Ident, data: &Data) -> proc_macro2::TokenStream {
+    try_expand_into_sex(name, data).unwrap_or_else(syn::Error::into_compile_error)
+}
+
+fn try_expand_into_sex(name: &syn::Ident, data: &Data) -> syn::Result<proc_macro2::TokenStream> {
     match data {
         Data::Struct(data_struct) => derive_struct(name, &data_struct.fields),
         Data::Enum(data_enum) => derive_enum(name, data_enum),
-        Data::Union(_) => syn::Error::new_spanned(name, "IntoSex derive does not support unions")
-            .to_compile_error(),
+        Data::Union(_) => Err(syn::Error::new_spanned(
+            name,
+            "`IntoSex` derive does not support unions",
+        )),
     }
 }
 
-fn derive_struct(name: &syn::Ident, fields: &Fields) -> proc_macro2::TokenStream {
+fn derive_struct(name: &syn::Ident, fields: &Fields) -> syn::Result<proc_macro2::TokenStream> {
     match fields {
         Fields::Named(fields) => {
-            let (elems, keywords) = named_field_list(fields, Accessor::SelfAccess);
-            quote! {
+            let (elems, keywords) = named_field_list(fields, Accessor::SelfAccess)?;
+            Ok(quote! {
                 impl sex::IntoSex for #name {
                     fn into_sex(&self) -> sex::Atom {
                         sex::Atom::List(sex::List::from(vec![
@@ -29,23 +35,26 @@ fn derive_struct(name: &syn::Ident, fields: &Fields) -> proc_macro2::TokenStream
                         ]))
                     }
                 }
-            }
+            })
         }
-        _ => {
-            syn::Error::new_spanned(name, "IntoSex derive only supports named fields")
-                .to_compile_error()
-        }
+        _ => Err(syn::Error::new_spanned(
+            name,
+            "`IntoSex` derive only supports named fields",
+        )),
     }
 }
 
-fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenStream {
+fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_macro2::TokenStream> {
     let mut arms = Vec::new();
 
     for variant in &denum.variants {
         let variant_name = &variant.ident;
-        let attribs = parse_sex_attributes(&variant.attrs);
+        let attribs = parse_sex_attributes(&variant.attrs)?;
         if attribs.default.is_some() || attribs.keyword.is_some() {
-            panic!("`default` and `keyword` attributes cannot be used on an enum identifier");
+            return Err(syn::Error::new_spanned(
+                variant_name,
+                "`default` and `keyword` attributes cannot be used on an enum identifier",
+            ));
         }
 
         let tag = attribs
@@ -79,7 +88,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
                 }
             }
             Fields::Named(fields) => {
-                let (elems, keywords) = named_field_list(fields, Accessor::Local);
+                let (elems, keywords) = named_field_list(fields, Accessor::Local)?;
                 let destructure = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
                 quote! {
                     #name::#variant_name { #(#destructure),* } => {
@@ -95,7 +104,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
         arms.push(arm);
     }
 
-    quote! {
+    Ok(quote! {
         impl sex::IntoSex for #name {
             fn into_sex(&self) -> sex::Atom {
                 match self {
@@ -103,13 +112,13 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
                 }
             }
         }
-    }
+    })
 }
 
 fn named_field_list(
     fields: &FieldsNamed,
     accessor: Accessor,
-) -> (Vec<proc_macro2::TokenStream>, Vec<proc_macro2::TokenStream>) {
+) -> syn::Result<(Vec<proc_macro2::TokenStream>, Vec<proc_macro2::TokenStream>)> {
     let mut elems = Vec::new();
     let mut keywords = Vec::new();
 
@@ -120,9 +129,12 @@ fn named_field_list(
             Accessor::Local => quote! { #field_name },
         };
 
-        let attribs = parse_sex_attributes(&field.attrs);
+        let attribs = parse_sex_attributes(&field.attrs)?;
         if attribs.tag.is_some() {
-            panic!("struct identifiers cannot have the `tag` attribute");
+            return Err(syn::Error::new_spanned(
+                field_name,
+                "struct identifiers cannot have the `tag` attribute",
+            ));
         }
 
         if let Some(keyword) = attribs.keyword {
@@ -133,11 +145,14 @@ fn named_field_list(
             });
         } else {
             if attribs.default.is_some() {
-                panic!("struct attribute `default`, cannot be used without a `keyword` attribute");
+                return Err(syn::Error::new_spanned(
+                    field_name,
+                    "struct attribute `default`, cannot be used without a `keyword` attribute",
+                ));
             }
             elems.push(quote! { #value.into_sex(), });
         }
     }
 
-    (elems, keywords)
+    Ok((elems, keywords))
 }

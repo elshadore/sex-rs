@@ -3,7 +3,6 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] `IntoSex` Macro
 - [ ] Redo Number Parsing
   Just check JSON number format then handoff to Rust to parse.
 - [ ] Better Errors
@@ -11,7 +10,8 @@ Both symbols and strings have to be valid unicode characters.
   - [ ] Unicode / Parser
 - [ ] Documentation
   - [ ] Example `example/example.rs`
-      Use this add the base for the example in the README
+      - Use this add the base for the example in the README
+      - [ ] Check Macro output in example (Macroexpand)
   - [ ] README
   - [ ] SPEC
 - [ ] Test check.

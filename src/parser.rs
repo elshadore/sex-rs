@@ -253,6 +253,18 @@ fn take_digits_buf<R: BufRead>(p: &mut Parser<R>, buf: &mut Vec<u8>) -> u32 {
     count
 }
 
+enum NumberLiteral {
+    Integer,
+    Float,
+}
+
+fn read_number_literal<R: BufRead>(p: &mut Parser<R>) -> Result<(NumberLiteral, String), SexParserError> {
+    let mut result = String::new();
+    let mut ty = NumberLiteral::Integer;
+
+    Ok((ty, result))
+}
+
 fn read_number<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     let start = p.pos;
     let mut num_buf = Vec::new();

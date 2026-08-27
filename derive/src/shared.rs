@@ -25,7 +25,7 @@ pub fn keyword_name(field: &syn::Ident, keyword: SexKeyword) -> String {
     }
 }
 
-pub fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
+pub fn parse_sex_attributes(attributes: &[Attribute]) -> syn::Result<SexAttributes> {
     let mut result = SexAttributes {
         tag: None,
         keyword: None,
@@ -47,84 +47,119 @@ pub fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
                 match power_word.as_str() {
                     "keyword" => {
                         if result.keyword.is_some() {
-                            panic!("keyword attribute already defined");
+                            return Err(syn::Error::new(
+                                ident.span(),
+                                "`keyword` attribute already defined",
+                            ));
                         }
-                        if maybe_punct(&mut iter, '=') {
+                        result.keyword = Some(if maybe_punct(&mut iter, '=') {
                             match iter.pop_front() {
                                 Some(proc_macro2::TokenTree::Literal(lit)) => {
                                     let s = lit.to_string();
-                                    result.keyword = Some(SexKeyword::Custom(s.trim_matches('"').to_string()));
+                                    SexKeyword::Custom(s.trim_matches('"').to_string())
                                 }
                                 Some(proc_macro2::TokenTree::Ident(ident)) => {
-                                    result.keyword = Some(SexKeyword::Custom(ident.to_string()));
+                                    SexKeyword::Custom(ident.to_string())
                                 }
-                                _ => {
-                                    panic!("expected");
+                                other => {
+                                    return Err(syn::Error::new(
+                                        token_span(other),
+                                        "expected a `Literal` or `Ident` type of token as `keyword` attribute",
+                                    ));
                                 }
                             }
                         } else {
-                            result.keyword = Some(SexKeyword::Keyword);
-                        }
+                            SexKeyword::Keyword
+                        });
                     }
                     "default" => {
                         if result.default.is_some() {
-                            panic!("default attribute already defined");
+                            return Err(syn::Error::new(
+                                ident.span(),
+                                "`default` attribute already defined",
+                            ));
                         }
-                        if maybe_punct(&mut iter, '=') {
+                        result.default = Some(if maybe_punct(&mut iter, '=') {
                             match iter.pop_front() {
                                 Some(proc_macro2::TokenTree::Ident(ident)) => {
-                                    let expr = syn::parse2(quote! { #ident }).unwrap();
-                                    result.default = Some(SexDefault::Custom(expr));
+                                    let expr = syn::parse2(quote! { #ident })?;
+                                    SexDefault::Custom(expr)
                                 }
                                 Some(proc_macro2::TokenTree::Literal(lit)) => {
-                                    let expr = syn::parse2(quote! { #lit }).unwrap();
-                                    result.default = Some(SexDefault::Custom(expr));
+                                    let expr = syn::parse2(quote! { #lit })?;
+                                    SexDefault::Custom(expr)
                                 }
-                                _ => {
-                                    panic!("expected default");
+                                other => {
+                                    return Err(syn::Error::new(
+                                        token_span(other),
+                                        "expected a `Literal` or `Ident` type of token as `default` attribute",
+                                    ));
                                 }
                             }
                         } else {
-                            result.default = Some(SexDefault::Default);
-                        }
+                            SexDefault::Default
+                        });
                     }
                     "tag" => {
                         if result.tag.is_some() {
-                            panic!("tag attribute already defined");
+                            return Err(syn::Error::new(
+                                ident.span(),
+                                "`tag` attribute already defined",
+                            ));
                         }
-                        expect_punct(&mut iter, '=');
-                        match iter.pop_front() {
+                        expect_punct(&mut iter, '=')?;
+                        result.tag = Some(match iter.pop_front() {
                             Some(proc_macro2::TokenTree::Literal(lit)) => {
                                 let s = lit.to_string();
-                                result.tag = Some(s.trim_matches('"').to_string());
+                                s.trim_matches('"').to_string()
                             }
-                            Some(proc_macro2::TokenTree::Ident(ident)) => {
-                                result.tag = Some(ident.to_string());
+                            Some(proc_macro2::TokenTree::Ident(ident)) => ident.to_string(),
+                            other => {
+                                return Err(syn::Error::new(
+                                    token_span(other),
+                                    "expected a `Literal` or `Ident` type of token as `tag` attribute",
+                                ));
                             }
-                            _ => {
-                                panic!("expected");
-                            }
-                        }
+                        });
                     }
                     _ => {
-                        panic!("unknown FromSex || IntoSex attribute identifier: {power_word}");
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            format!("unknown `FromSex` || `IntoSex` attribute identifier: '{power_word}'"),
+                        ));
                     }
                 }
             }
         }
     }
 
-    result
+    Ok(result)
 }
 
-fn expect_punct(iter: &mut VecDeque<proc_macro2::TokenTree>, expect: char) {
-    if let Some(proc_macro2::TokenTree::Punct(punct)) = iter.pop_front() {
-        let found = punct.as_char();
-        if found != expect {
-            panic!("expected: '{expect}', found: '{found}'");
+fn token_span(token: Option<proc_macro2::TokenTree>) -> proc_macro2::Span {
+    token.map_or_else(proc_macro2::Span::call_site, |token| token.span())
+}
+
+fn expect_punct(
+    iter: &mut VecDeque<proc_macro2::TokenTree>,
+    expect: char,
+) -> syn::Result<()> {
+    match iter.pop_front() {
+        Some(proc_macro2::TokenTree::Punct(punct)) => {
+            let found = punct.as_char();
+            if found != expect {
+                Err(syn::Error::new(
+                    punct.span(),
+                    format!("expected optional punctuation: '{expect}', found: '{found}'"),
+                ))
+            } else {
+                Ok(())
+            }
         }
-    } else {
-        panic!("expected: '{expect}'")
+        other => Err(syn::Error::new(
+            token_span(other),
+            format!("expected punctuation: '{expect}'"),
+        )),
     }
 }
 
