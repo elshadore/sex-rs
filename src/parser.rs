@@ -240,17 +240,17 @@ fn read_symbol<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     }
 }
 
-fn take_digits_buf<R: BufRead>(p: &mut Parser<R>, buf: &mut Vec<u8>) -> u32 {
-    let mut count: u32 = 0;
+fn take_digits<R: BufRead>(p: &mut Parser<R>, s: &mut String) -> bool {
+    let mut flag: bool = false;
     while let Some(ch) = p.at() {
         if !ch.is_ascii_digit() {
             break;
         }
-        buf.push(ch as u8);
+        s.push(ch);
         p.inc();
-        count += 1;
+        flag = true;
     }
-    count
+    flag
 }
 
 enum NumberLiteral {
@@ -258,98 +258,76 @@ enum NumberLiteral {
     Float,
 }
 
-fn read_number_literal<R: BufRead>(p: &mut Parser<R>) -> Result<(NumberLiteral, String), SexParserError> {
+fn read_number_literal<R: BufRead>(
+    p: &mut Parser<R>,
+) -> Result<(NumberLiteral, String), SexParserError> {
     let mut result = String::new();
     let mut ty = NumberLiteral::Integer;
+
+    if p.at() == Some('-') {
+        result.push('-');
+        p.inc();
+    }
+
+    match p.at() {
+        Some('0') => {
+            result.push('0');
+            p.inc();
+            if p.at().is_some_and(|ch| ch.is_ascii_digit()) {
+                return err!(p, InvalidNumber);
+            }
+        }
+        Some(ch) if ch.is_ascii_digit() => {
+            _ = take_digits(p, &mut result);
+        }
+        _ => {
+            return err!(p, InvalidNumber);
+        }
+    }
+
+    if p.at() == Some('.') {
+        result.push('.');
+        p.inc();
+        ty = NumberLiteral::Float;
+        if !take_digits(p, &mut result) {
+            return err!(p, InvalidNumber);
+        }
+    }
+
+    if p.at().is_some_and(|ch| ch == 'e' || ch == 'E') {
+        let ch = p.at().unwrap();
+        result.push(ch);
+        p.inc();
+        ty = NumberLiteral::Float;
+        if p.at() == Some('-') {
+            result.push('-');
+            p.inc();
+        } else if p.at() == Some('+') {
+            result.push('+');
+            p.inc();
+        }
+        if !take_digits(p, &mut result) {
+            return err!(p, InvalidNumber);
+        }
+    }
 
     Ok((ty, result))
 }
 
 fn read_number<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     let start = p.pos;
-    let mut num_buf = Vec::new();
-
-    if p.at() == Some('-') {
-        num_buf.push(b'-');
-        p.inc();
-    }
-
-    match p.at() {
-        Some('0') => {
-            num_buf.push(b'0');
-            p.inc();
-            if p.at().is_some_and(|ch| ch.is_ascii_digit()) {
-                return Err(p.error(start, SexParserErrorKind::InvalidNumber));
-            }
-        }
-        Some(ch) if ch.is_ascii_digit() => {
-            take_digits_buf(p, &mut num_buf);
-        }
-        _ => {
-            return Err(p.error(start, SexParserErrorKind::InvalidNumber));
-        }
-    }
-
-    let mut is_float = false;
-    if p.at() == Some('.') {
-        num_buf.push(b'.');
-        p.inc();
-        is_float = true;
-        let frac_digits = take_digits_buf(p, &mut num_buf);
-        if frac_digits == 0 {
-            return Err(p.error(start, SexParserErrorKind::InvalidNumber));
-        }
-    }
-
-    if p.at() == Some('e') || p.at() == Some('E') {
-        is_float = true;
-        num_buf.push(b'e');
-        p.inc();
-        if p.at() == Some('-') {
-            num_buf.push(b'-');
-            p.inc();
-        } else if p.at() == Some('+') {
-            num_buf.push(b'+');
-            p.inc();
-        }
-        if take_digits_buf(p, &mut num_buf) == 0 {
-            return Err(p.error(start, SexParserErrorKind::InvalidNumber));
-        }
-    }
-
-    if is_float {
-        let s = std::str::from_utf8(&num_buf)
-            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?;
-        let n: f64 = s
-            .parse()
-            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?;
-        Ok(Atom::Number(Number::Float(n)))
-    } else {
-        let negative = num_buf[0] == b'-';
-        let digits = if negative {
-            &num_buf[1..]
-        } else {
-            &num_buf[..]
-        };
-        let mantissa = std::str::from_utf8(digits)
-            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?
-            .parse::<u64>()
-            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?;
-        let n: i64 = if negative {
-            if mantissa > (i64::MAX as u64) + 1 {
-                return Err(p.error(start, SexParserErrorKind::InvalidNumber));
-            }
-            if mantissa == (i64::MAX as u64) + 1 {
-                i64::MIN
-            } else {
-                -(mantissa as i64)
-            }
-        } else {
-            i64::try_from(mantissa)
-                .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber))?
-        };
-        Ok(Atom::Number(Number::Integer(n)))
-    }
+    let (ty, s) = read_number_literal(p)?;
+    let number = match ty {
+        NumberLiteral::Float => s
+            .parse::<f64>()
+            .map(Number::Float)
+            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber)),
+        NumberLiteral::Integer => s
+            .parse::<i64>()
+            .map(Number::Integer)
+            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber)),
+    };
+    number.map(Atom::Number)
 }
 
 fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
