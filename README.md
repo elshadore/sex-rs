@@ -6,19 +6,19 @@ The Sex library comes with a bunch of tools for working with the format.
 
 - Basic Lisp Data
 
-Using the `Atom` type primitive as a code Sex data can be respresented in a LISP like form.
+    Using the `Atom` type primitive as a code Sex data can be respresented in a LISP like form.
 
 - Iterative Views
 
-The `ListView` and `KeywordView` are custom iterative views that make procedural parsing easy to accomplish.
+    The `ListView` and `KeywordView` are custom iterative views that make procedural parsing easy to accomplish.
 
 - `FromSex` and `IntoSex` Traits
 
-The Rust Traits `FromSex` and `IntoSex` allow you to use the Rust type system to
+    The Rust Traits `FromSex` and `IntoSex` allow you to use the Rust type system to
 
 - Declarive Macros (like serde)
 
-Using the `#[derive(FromSex)]` and `#[derive(IntoSex)]` forms to automate the construction of the `FromSex` and `IntoSex` traits to create declarative serialization and deserialization.
+    Using the `#[derive(FromSex)]` and `#[derive(IntoSex)]` forms to automate the construction of the `FromSex` and `IntoSex` traits to create declarative serialization and deserialization.
 
 ## Example
 ```rust
