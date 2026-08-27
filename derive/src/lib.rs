@@ -3,6 +3,7 @@ use syn::{DeriveInput, parse_macro_input};
 
 mod from_sex;
 mod into_sex;
+mod shared;
 
 /// Derive macro for declarively parsing sexpression data.
 /// Examples:
@@ -36,5 +37,12 @@ mod into_sex;
 pub fn derive_from_sex(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let expanded = from_sex::expand_from_sex(&input.ident, &input.data);
+    TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(IntoSex, attributes(sex))]
+pub fn derive_into_sex(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let expanded = into_sex::expand_into_sex(&input.ident, &input.data);
     TokenStream::from(expanded)
 }
