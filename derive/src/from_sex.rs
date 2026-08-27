@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{Attribute, Data, Expr, Fields, Lit, Meta};
+use syn::{Attribute, Data, Expr, Fields, FieldsNamed, Lit, Meta};
 
 pub fn expand_from_sex(name: &syn::Ident, data: &Data) -> proc_macro2::TokenStream {
     match data {
@@ -10,75 +10,108 @@ pub fn expand_from_sex(name: &syn::Ident, data: &Data) -> proc_macro2::TokenStre
     }
 }
 
+fn keyword_name(field: &syn::Ident, keyword: SexKeyword) -> String {
+    match keyword {
+        SexKeyword::Custom(string) => string,
+        SexKeyword::Keyword => sex_util::sex_name(field.to_string()),
+    }
+}
+
 fn derive_struct(name: &syn::Ident, fields: &Fields) -> proc_macro2::TokenStream {
-    let fields = match fields {
-        Fields::Named(fields) => &fields.named,
+    match fields {
+        Fields::Named(fields) => derive_struct_named(StructIdent::Struct(name), fields),
         _ => {
             return syn::Error::new_spanned(name, "FromSex derive only supports named fields")
                 .to_compile_error();
         }
-    };
+    }
+}
 
-    let mut positional_parsers = Vec::new();
-    let mut keyword_parsers = Vec::new();
-    let mut field_inits = Vec::new();
+enum StructIdent<'a> {
+    Struct(&'a syn::Ident),
+    Enum {
+        name: &'a syn::Ident,
+        variant: &'a syn::Ident,
+    },
+}
 
-    for field in fields {
+fn derive_struct_named(name: StructIdent, fields: &FieldsNamed) -> proc_macro2::TokenStream {
+    let mut elements = Vec::new();
+    let mut keywords = Vec::new();
+    let mut names = Vec::new();
+
+    for field in &fields.named {
         let field_name = field.ident.as_ref().unwrap();
         let field_ty = &field.ty;
 
-        let sex_attrs = parse_sex_attrs(&field.attrs);
+        let attribs = parse_sex_attributes(&field.attrs);
+        if attribs.tag.is_some() {
+            panic!("struct identifiers cannot have the `tag` attribute");
+        }
 
-        if sex_attrs.keyword {
-            let keyword_name = sex_attrs
-                .keyword_name
-                .unwrap_or_else(|| sex_util::sex_name(field_name.to_string()));
-
-            let parser = if sex_attrs.strict {
-                quote! {
-                    let #field_name: #field_ty = keyword_map.required(#keyword_name)?;
+        if let Some(keyword) = attribs.keyword {
+            let keyword_name = keyword_name(field_name, keyword);
+            let field_code = match attribs.default {
+                Some(SexDefault::Custom(expr)) => {
+                    quote! {
+                        let #field_name: #field_ty = keyword_map.optional(#keyword_name)?.unwrap_or(#expr);
+                    }
                 }
-            } else {
-                let default_value = if let Some(expr) = sex_attrs.default_expr {
-                    quote! { #expr }
-                } else {
-                    quote! { Default::default() }
-                };
-
-                quote! {
-                    let #field_name: #field_ty = keyword_map.optional(#keyword_name)?.unwrap_or(#default_value);
+                Some(SexDefault::Default) => {
+                    quote! {
+                        let #field_name: #field_ty = keyword_map.optional(#keyword_name)?.unwrap_or(Default::default());
+                    }
+                }
+                None => {
+                    quote! {
+                        let #field_name: #field_ty = keyword_map.required(#keyword_name)?;
+                    }
                 }
             };
-
-            keyword_parsers.push(parser);
+            keywords.push(field_code);
         } else {
-            positional_parsers.push(quote! {
+            if attribs.default.is_some() {
+                panic!("struct attribute `default`, cannot be used without a `keyword` attribute");
+            }
+            elements.push(quote! {
                 let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
             });
         }
 
-        field_inits.push(quote! { #field_name });
+        names.push(quote! { #field_name });
     }
+    match name {
+        StructIdent::Struct(name) => {
+            quote! {
+                impl sex::FromSex for #name {
+                    fn from_sex(atom: &sex::Atom) -> Result<Self, sex::SexError> {
+                        let list = match atom {
+                            sex::Atom::List(list) => list,
+                            _ => return Err(sex::SexError::TypeError {
+                                expected: sex::AtomTy::List,
+                                found: atom.clone(),
+                            }),
+                        };
 
-    quote! {
-        impl sex::FromSex for #name {
-            fn from_sex(atom: &sex::Atom) -> Result<Self, sex::SexError> {
-                let list = match atom {
-                    sex::Atom::List(list) => list,
-                    _ => return Err(sex::SexError::TypeError {
-                        expected: sex::AtomTy::List,
-                        found: atom.clone(),
-                    }),
-                };
+                        let mut view = sex::ListView::new(list);
+                        #(#elements)*
+                        let keyword_map = view.into_keywords()?;
+                        #(#keywords)*
 
+                        Ok(#name {
+                            #(#names),*
+                        })
+                    }
+                }
+            }
+        }
+        StructIdent::Enum { name, variant } => {
+            quote! {
                 let mut view = sex::ListView::new(list);
-                #(#positional_parsers)*
+                #(#elements)*
                 let keyword_map = view.into_keywords()?;
-                #(#keyword_parsers)*
-
-                Ok(#name {
-                    #(#field_inits),*
-                })
+                #(#keywords)*
+                Ok(#name::#variant { #(#names),* })
             }
         }
     }
@@ -90,12 +123,14 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
 
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
-        let sex_attrs = parse_sex_attrs(&variant.attrs);
+        let attribs = parse_sex_attributes(&variant.attrs);
+        if attribs.default.is_some() || attribs.keyword.is_some() {
+            panic!("`default` and `keyword` attributes cannot be used on an enum identifier");
+        }
 
-        let tag = sex_attrs
-            .keyword_name
+        let tag = attribs
+            .tag
             .unwrap_or_else(|| sex_util::sex_name(variant_name.to_string()));
-
         variant_names.push(tag.clone());
 
         let fields = &variant.fields;
@@ -149,64 +184,13 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
                     }
                 }
             }
-            Fields::Named(fields) => {
-                let mut positional_parsers = Vec::new();
-                let mut keyword_parsers = Vec::new();
-                let mut inits = Vec::new();
-
-                for field in &fields.named {
-                    let field_name = field.ident.as_ref().unwrap();
-                    let field_ty = &field.ty;
-                    let sex_attrs = parse_sex_attrs(&field.attrs);
-
-                    if sex_attrs.keyword {
-                        let keyword_name = sex_attrs
-                            .keyword_name
-                            .unwrap_or_else(|| sex_util::sex_name(field_name.to_string()));
-
-                        let parser = if sex_attrs.strict {
-                            quote! {
-                                let #field_name: #field_ty = keyword_map.required(#keyword_name)?;
-                            }
-                        } else {
-                            let default_value = if let Some(expr) = sex_attrs.default_expr {
-                                quote! { #expr }
-                            } else {
-                                quote! { Default::default() }
-                            };
-
-                            quote! {
-                                let #field_name: #field_ty = keyword_map.optional(#keyword_name)?.unwrap_or(#default_value);
-                            }
-                        };
-
-                        keyword_parsers.push(parser);
-                    } else {
-                        positional_parsers.push(quote! {
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
-                        });
-                    }
-
-                    inits.push(quote! { #field_name });
-                }
-
-                if keyword_parsers.is_empty() {
-                    quote! {
-                        let mut view = sex::ListView::new_slice(rest);
-                        #(#positional_parsers)*
-                        view.into_keywords()?;
-                        Ok(#name::#variant_name { #(#inits),* })
-                    }
-                } else {
-                    quote! {
-                        let mut view = sex::ListView::new_slice(rest);
-                        #(#positional_parsers)*
-                        let keyword_map = view.into_keywords()?;
-                        #(#keyword_parsers)*
-                        Ok(#name::#variant_name { #(#inits),* })
-                    }
-                }
-            }
+            Fields::Named(fields) => derive_struct_named(
+                StructIdent::Enum {
+                    name,
+                    variant: variant_name,
+                },
+                fields,
+            ),
             Fields::Unit => {
                 quote! {
                     Ok(#name::#variant_name)
@@ -262,7 +246,7 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
 }
 
 enum SexKeyword {
-    Strict,
+    Keyword,
     Custom(String),
 }
 
@@ -277,35 +261,22 @@ struct SexAttributes {
     pub default: Option<SexDefault>,
 }
 
-impl SexAttributes {
-    pub fn verify(&self) {
-        if self.tag.is_some() {
-            if self.keyword.is_some() {
-                panic!("")
-            }
-            if self.default.is_some() {
-                panic!("")
-            }
-        } else if self.default.is_some() {
-            if self.keyword.is_none() {
-                panic!("")
-            }
-        }
-    }
-}
-
-fn parse_sex_attribute(attributes: &[Attribute]) -> SexAttributes {
+fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
     let mut result = SexAttributes {
         tag: None,
         keyword: None,
-        default: None
+        default: None,
     };
-    
-    for attribute in attributes.iter().filter(|attrib| attrib.path().is_ident("sex")) {
+
+    for attribute in attributes
+        .iter()
+        .filter(|attrib| attrib.path().is_ident("sex"))
+    {
         if let Meta::List(meta) = &attribute.meta {
             let mut iter = meta.tokens.clone().into_iter();
             if let Some(proc_macro2::TokenTree::Ident(ident)) = iter.next() {
-                match ident.to_string().as_str() {
+                let power_word = ident.to_string();
+                match power_word.as_str() {
                     "keyword" => {
                         if result.keyword.is_some() {
                             panic!("keyword attribute already defined");
@@ -323,21 +294,21 @@ fn parse_sex_attribute(attributes: &[Attribute]) -> SexAttributes {
                                 }
                             }
                         } else {
-                            result.keyword = Some(SexKeyword::Strict);
+                            result.keyword = Some(SexKeyword::Keyword);
                         }
-                    },
+                    }
                     "default" => {
                         if result.default.is_some() {
                             panic!("default attribute already defined");
                         }
                         if maybe_punct(&mut iter, '=') {
                             match iter.next() {
-                                Some(proc_macro2::TokenTree::Literal(lit)) => {
-                                    let expr = syn::parse2(quote! { #lit }).unwrap();
-                                    result.default = Some(SexDefault::Custom(expr));
-                                }
                                 Some(proc_macro2::TokenTree::Ident(ident)) => {
                                     let expr = syn::parse2(quote! { #ident }).unwrap();
+                                    result.default = Some(SexDefault::Custom(expr));
+                                }
+                                Some(proc_macro2::TokenTree::Literal(lit)) => {
+                                    let expr = syn::parse2(quote! { #lit }).unwrap();
                                     result.default = Some(SexDefault::Custom(expr));
                                 }
                                 _ => {
@@ -366,7 +337,7 @@ fn parse_sex_attribute(attributes: &[Attribute]) -> SexAttributes {
                         }
                     }
                     _ => {
-                        panic!("unknown attribute identifier");
+                        panic!("unknown FromSex || IntoSex attribute identifier: {power_word}");
                     }
                 }
             }
@@ -374,7 +345,6 @@ fn parse_sex_attribute(attributes: &[Attribute]) -> SexAttributes {
     }
 
     result
-
 }
 
 fn expect_punct(iter: &mut impl Iterator<Item = proc_macro2::TokenTree>, expect: char) {
