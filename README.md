@@ -1,5 +1,24 @@
 # 🍆 Sex: An S-Expression Parser
-Sex is an sexpression data format designed to be a JSON of sexpression data, to be used between different programming languages and applications. Sex can also be used as a declarive scripting language for configs as generic sexpression data is perfect for custom declarive languages.
+Sex is an sexpression data format designed to be a JSON of sexpression data. This is format is primarily designed to be used between different programming languages and applications. Another great usecase for Sex can be as a declarive scripting language for application configs, as generic sexpression data is perfect for custom declarive languages.
+
+## The Library
+The Sex library comes with a bunch of tools for working with the format.
+
+### Basic Lisp Data
+Using the `Atom` type primitive as a code Sex data can be respresented in a LISP like form.
+
+### Iterative Views
+The `ListView` and `KeywordView` are custom iterative views that make procedural parsing easy to accomplish.
+
+### `FromSex` and `IntoSex` Traits
+The Rust Traits `FromSex` and `IntoSex` allow you to use the Rust type system to
+
+### Declarive Macros (like serde)
+Using the `#[derive(FromSex)]` and `#[derive(IntoSex)]` forms to automate the construction of the `FromSex` and `IntoSex` traits to create declarative serialization and deserialization.
+
+## Example
+```rust
+```
 
 ## Format Desciption
 Below is a desciption of the formats data types.
@@ -24,7 +43,7 @@ The core structure of sexpressions. They start with the character `(` and end wi
 - `()`, the empty list. Note for users coming from LISP languages, the empty list does not equal `nil`.
 
 ### `Symbols`
-`foo`, `bar`, `|foo bar`.
+`foo`, `bar`, `|foo bar|`.
 
 Basic symbol parsing follows some easy rules.
 
@@ -60,17 +79,6 @@ Strings are pretty basic like every other string implementation. Escape codes ar
 - `\xFF` a hex escape, featuring two custom hex characters. As strings are all valid Unicode, this essentially is read as extended ascii and is converted into whatever unicode format that is being used, so this does not refer to the actual character byte being used.
 - `\u{FFFFFF}` a unicode escape, this features up to six custom hex codes are refers to a valid Unicode codepoint character. Example `\u{03BB}` => `λ`.
 
-<!-- ## The Library -->
-<!-- The Sex library comes with a bunch of tools for working with the format. -->
-
-<!-- - Basic Lisp Data -->
-<!--     Using the `Atom` type primitive as a code Sex data can be respresented in a LISP like form. -->
-<!-- - Iterative Views -->
-<!--     The `ListView` and `KeywordView` are custom iterative views that make procedural parsing easy to accomplish. -->
-<!-- - `FromSex` and `IntoSex` Traits -->
-<!--     The Rust Traits `FromSex` and `IntoSex` allow you to use the Rust type system to  -->
-<!-- - Declarive Macros (like serde) -->
-<!--     Using the `#[derive(FromSex)]` and `#[derive(IntoSex)]` forms to automate the construction of the `FromSex` and `IntoSex` traits to create declarative serialization and deserialization. -->
 
 <!-- Sex is a parser for transforming generic lisp data (s-expressions) into rust data. Sex has four main modes of use. -->
 
