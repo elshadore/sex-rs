@@ -3,23 +3,23 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Pretty Printing
-  - [ ] Method on `IntoSex`
-- [x] Redo Macro Derive
-  - [x] derive changes rust symbols `foo_bar` to lisp symbols `foo-bar`
-  - [ ] Serializer
-  - [x] default in the declarative macro should use the Default trait if no value is provided
-- [ ] Look at *all* Error Messages to see if they make sense.
-  - Unicode has bad errors
+- [ ] `IntoSex` Macro
+- [ ] Redo Number Parsing
+  Just check JSON number format then handoff to Rust to parse.
+- [ ] Better Errors
+  - [ ] Macros
+  - [ ] Unicode / Parser
+- [ ] Documentation
+  - [ ] Example `example/example.rs`
+      Use this add the base for the example in the README
+  - [ ] README
+  - [ ] SPEC
 - [ ] Test check.
   - Ensure good coverage.
   - Remove useless tests.
 - [ ] Quality Check
-- [ ] Redo `example/example.rs`
-  Use this add the base for the example in the README
-- [ ] Redo README
-- [ ] Floating Point Parsing Precision
-- [ ] Write Format Spec
+- [ ] Pretty Printing
+  - [ ] Method on `IntoSex`
 
 
 ## Keyword Details
