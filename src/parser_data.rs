@@ -13,6 +13,16 @@ macro_rules! err {
     };
 }
 
+#[macro_export]
+macro_rules! err_unicode {
+    ($p:expr, $kind:ident) => {
+        Err($p.error($p.pos, SexParserErrorKind::MalformedUnicodeEscape(MalformedUnicodeEscape::$kind)))
+    };
+    ($p:expr, $kind:ident($($arg:tt)*)) => {
+        Err($p.error($p.pos, SexParserErrorKind::MalformedUnicodeEscape(MalformedUnicodeEscape::$kind($($arg)*))))
+    };
+}
+
 fn read_char(reader: &mut impl BufRead) -> Option<char> {
     loop {
         let buf = reader.fill_buf().ok()?;
@@ -141,6 +151,16 @@ pub enum BarredTy {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MalformedUnicodeEscape {
+    EscapeOpeningBraceExpected(Option<char>),
+    HexMaximumOfSixReached,
+    ExpectedHexChar(char),
+    EscapeUnterminated,
+    EmptyEscape,
+    InvalidUnicodeCodepoint(u32),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SexParserErrorKind {
     UnexpectedEof,
     UnexpectedChar(char),
@@ -151,8 +171,7 @@ pub enum SexParserErrorKind {
     MalformedStringEscape(char),
     MalformedBarEscape(char),
     MalformedHexEscape(MalformedHexCode),
-    MalformedUnicodeEscape(char),
-    InvalidUnicodeChar(u32),
+    MalformedUnicodeEscape(MalformedUnicodeEscape),
     InvalidNumber,
     EmptyKeyword,
     ExpectedWhitespace(char),
@@ -171,78 +190,92 @@ impl std::fmt::Display for SexParserError {
         if let Some(file) = file {
             write!(f, "{}:", file)?;
         }
+        write!(f, "{}: ", pos)?;
         match kind {
-            SexParserErrorKind::UnexpectedEof => write!(f, "{}: unexpected EOF", pos),
-            SexParserErrorKind::UnexpectedChar(ch) => {
-                write!(f, "{}: unexpected character '{}'", pos, ch)
+            SexParserErrorKind::UnexpectedEof => write!(f, "unexpected EOF"),
+            SexParserErrorKind::UnexpectedChar(c) => {
+                write!(f, "unexpected character '{}'", c)
             }
             SexParserErrorKind::ExpectedChar { expected, found } => {
                 write!(
                     f,
-                    "{}: expected the character: '{}', found: '{}'",
-                    pos, expected, found
+                    "expected the character: '{}', found: '{}'",
+                    expected, found
                 )
             }
             SexParserErrorKind::UnterminatedList => {
-                write!(f, "{}: unterminated list, expected ')'", pos)
+                write!(f, "unterminated list, expected ')'")
             }
-            SexParserErrorKind::UnterminatedString => write!(f, "{}: unterminated string", pos),
+            SexParserErrorKind::UnterminatedString => write!(f, "unterminated string"),
             SexParserErrorKind::UnterminatedBarSymbol => {
-                write!(f, "{}: unterminated barred symbol, expected '|'", pos)
+                write!(f, "unterminated barred symbol, expected '|'")
             }
-            SexParserErrorKind::MalformedStringEscape(ch) => {
-                write!(f, "{}: malformed string escape sequence '\\{}'", pos, ch)
+            SexParserErrorKind::MalformedStringEscape(c) => {
+                write!(f, "malformed string escape sequence '\\{}'", c)
             }
-            SexParserErrorKind::MalformedBarEscape(ch) => {
-                write!(
-                    f,
-                    "{}: malformed barred symbol escape sequence '\\{}'",
-                    pos, ch
-                )
+            SexParserErrorKind::MalformedBarEscape(c) => {
+                write!(f, "malformed barred symbol escape sequence '\\{}'", c)
             }
             SexParserErrorKind::MalformedHexEscape(value) => match value {
                 MalformedHexCode::InvalidLeft { left } => {
                     write!(
                         f,
-                        "{}: malformed hex escape sequence in the first position: '\\x{}?'",
-                        pos, left
+                        "malformed hex escape sequence in the first position: '\\x{}?'",
+                        left
                     )
                 }
                 MalformedHexCode::InvalidRight { left, right } => {
                     write!(
                         f,
-                        "{}: malformed hex escape sequence in the second position: '\\x{}{}'",
-                        pos, left, right
+                        "malformed hex escape sequence in the second position: '\\x{}{}'",
+                        left, right
                     )
                 }
                 MalformedHexCode::MissingLeft => {
                     write!(
                         f,
-                        "{}: malformed hex escape sequence, string ended before any hexcodes could be read!",
-                        pos
+                        "malformed hex escape sequence, string ended before any hexcodes could be read!"
                     )
                 }
                 MalformedHexCode::MissingRight { left } => {
                     write!(
                         f,
-                        "{}: malformed hex escape sequence, string ended before second hexcode could be read: '\\x{}_'",
-                        pos, left
+                        "malformed hex escape sequence, string ended before second hexcode could be read: '\\x{}_'",
+                        left
                     )
                 }
             },
-            SexParserErrorKind::MalformedUnicodeEscape(value) => {
-                write!(f, "{}: malformed unicode escape sequence: {}", pos, value)
-            }
             SexParserErrorKind::InvalidNumber => {
-                write!(f, "{}: invalid number", pos)
+                write!(f, "invalid number")
             }
-            SexParserErrorKind::EmptyKeyword => write!(f, "{}: empty keyword", pos),
-            SexParserErrorKind::ExpectedWhitespace(ch) => {
-                write!(f, "{}: expected whitespace before '{}'", pos, ch)
+            SexParserErrorKind::EmptyKeyword => write!(f, "empty keyword"),
+            SexParserErrorKind::ExpectedWhitespace(c) => {
+                write!(f, "expected whitespace before '{}'", c)
             }
-            SexParserErrorKind::InvalidUnicodeChar(value) => {
-                write!(f, "{}, invalid unicode character '\\u{{{:x}}}'", pos, value)
-            }
+            SexParserErrorKind::MalformedUnicodeEscape(err) => match err {
+                MalformedUnicodeEscape::EscapeOpeningBraceExpected(c) => {
+                    if let Some(c) = c {
+                        write!(f, "expected opening brace found: '{c}'")
+                    } else {
+                        write!(f, "expected opening brace found: EOF")
+                    }
+                }
+                MalformedUnicodeEscape::EmptyEscape => {
+                    write!(f, "empty unicode escape sequence")
+                }
+                MalformedUnicodeEscape::EscapeUnterminated => {
+                    write!(f, "unicode escape sequence unterminated missing '}}'")
+                }
+                MalformedUnicodeEscape::ExpectedHexChar(c) => {
+                    write!(f, "expected hex char, found: '{c}'")
+                }
+                MalformedUnicodeEscape::HexMaximumOfSixReached => {
+                    write!(f, "a maximum of 6 unicode hex values has been reached")
+                }
+                MalformedUnicodeEscape::InvalidUnicodeCodepoint(code) => {
+                    write!(f, "invalid unicode codepoint: '{code}'")
+                }
+            },
         }
     }
 }

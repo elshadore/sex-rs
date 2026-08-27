@@ -3,11 +3,10 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Redo Number Parsing
-  Just check JSON number format then handoff to Rust to parse.
 - [ ] Better Errors
-  - [ ] Macros
+  - [x] Macros
   - [ ] Unicode / Parser
+  - [ ] Number
 - [ ] Documentation
   - [ ] Example `example/example.rs`
       - Use this add the base for the example in the README

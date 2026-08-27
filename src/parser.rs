@@ -1,8 +1,8 @@
 use crate::atom::{Atom, Number, Text, TextTy};
-use crate::err;
 use crate::is_symbol_char;
 use crate::list::{List, ListBuilder};
 use crate::parser_data::*;
+use crate::{err, err_unicode};
 use std::io::{BufRead, BufReader, Cursor, Read};
 
 fn skip_whitespace<R: BufRead>(p: &mut Parser<R>) -> bool {
@@ -10,15 +10,15 @@ fn skip_whitespace<R: BufRead>(p: &mut Parser<R>) -> bool {
     loop {
         match p.at() {
             None => return result,
-            Some(ch) if ch.is_whitespace() => {
+            Some(c) if c.is_whitespace() => {
                 result = true;
                 p.inc();
             }
             Some(';') => {
                 result = true;
-                while let Some(ch) = p.at() {
+                while let Some(c) = p.at() {
                     p.inc();
-                    if ch == '\n' {
+                    if c == '\n' {
                         break;
                     }
                 }
@@ -57,8 +57,8 @@ fn read_list<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
 
 fn read_hex_digit<R: BufRead>(p: &mut Parser<R>) -> Result<u8, HexError> {
     match p.inc() {
-        Some(ch) if ch.is_ascii_hexdigit() => Ok(ch.to_digit(16).unwrap_or(0) as u8),
-        Some(ch) => Err(HexError::Invalid(ch)),
+        Some(c) if c.is_ascii_hexdigit() => Ok(c.to_digit(16).unwrap_or(0) as u8),
+        Some(c) => Err(HexError::Invalid(c)),
         None => Err(HexError::NoChar),
     }
 }
@@ -88,42 +88,44 @@ fn read_hex_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserError
 }
 
 fn read_unicode_escape<R: BufRead>(p: &mut Parser<R>) -> Result<char, SexParserError> {
-    let mut value: u32 = 0;
-    let mut digits: u32 = 0;
     match p.inc() {
         Some(c) => {
             if c != '{' {
-                return err!(p, MalformedUnicodeEscape(c));
+                return err_unicode!(p, EscapeOpeningBraceExpected(Some(c)));
             }
         }
         None => {
-            return Err(p.error(p.pos, SexParserErrorKind::MalformedUnicodeEscape('\0')));
+            return err_unicode!(p, EscapeOpeningBraceExpected(None));
         }
     }
+
+    let mut value: u32 = 0;
+    let mut digits: u32 = 0;
     loop {
         match p.inc() {
             Some('}') => break,
-            Some(ch) if ch.is_ascii_hexdigit() && digits < 6 => {
-                value = value * 16 + ch.to_digit(16).unwrap_or(0);
-                digits += 1;
+            Some(c) if c.is_ascii_hexdigit() => {
+                if digits < 6 {
+                    value = value * 16 + c.to_digit(16).unwrap_or(0);
+                    digits += 1;
+                } else {
+                    return err_unicode!(p, HexMaximumOfSixReached);
+                }
             }
-            Some(ch) if ch.is_ascii_hexdigit() => {
-                return err!(p, MalformedUnicodeEscape(ch));
-            }
-            Some(ch) => {
-                return err!(p, MalformedUnicodeEscape(ch));
+            Some(c) => {
+                return err_unicode!(p, ExpectedHexChar(c));
             }
             None => {
-                return err!(p, MalformedUnicodeEscape('\0'));
+                return err_unicode!(p, EscapeUnterminated);
             }
         }
     }
     if digits == 0 {
-        return err!(p, MalformedUnicodeEscape('\0'));
+        return err_unicode!(p, EmptyEscape);
     }
     match char::from_u32(value) {
-        Some(ch) => Ok(ch),
-        None => err!(p, InvalidUnicodeChar(value)),
+        Some(c) => Ok(c),
+        None => err_unicode!(p, InvalidUnicodeCodepoint(value)),
     }
 }
 
@@ -150,13 +152,13 @@ fn read_string<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
                     Some('0') => '\0',
                     Some('x') => read_hex_escape(p)?,
                     Some('u') => read_unicode_escape(p)?,
-                    Some(ch) => {
-                        return err!(p, MalformedStringEscape(ch));
+                    Some(c) => {
+                        return err!(p, MalformedStringEscape(c));
                     }
                 };
                 s.push(esc);
             }
-            Some(ch) => s.push(ch),
+            Some(c) => s.push(c),
         }
     }
 }
@@ -222,11 +224,11 @@ fn read_keyword<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
 
 fn read_symbol<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     let mut name = String::new();
-    while let Some(ch) = p.at() {
-        if !is_symbol_char(ch) {
+    while let Some(c) = p.at() {
+        if !is_symbol_char(c) {
             break;
         }
-        name.push(ch);
+        name.push(c);
         p.inc();
     }
     match name.as_str() {
@@ -242,11 +244,11 @@ fn read_symbol<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
 
 fn take_digits<R: BufRead>(p: &mut Parser<R>, s: &mut String) -> bool {
     let mut flag: bool = false;
-    while let Some(ch) = p.at() {
-        if !ch.is_ascii_digit() {
+    while let Some(c) = p.at() {
+        if !c.is_ascii_digit() {
             break;
         }
-        s.push(ch);
+        s.push(c);
         p.inc();
         flag = true;
     }
@@ -277,7 +279,7 @@ fn read_number_literal<R: BufRead>(
                 return err!(p, InvalidNumber);
             }
         }
-        Some(ch) if ch.is_ascii_digit() => {
+        Some(c) if c.is_ascii_digit() => {
             _ = take_digits(p, &mut result);
         }
         _ => {
@@ -294,9 +296,9 @@ fn read_number_literal<R: BufRead>(
         }
     }
 
-    if p.at().is_some_and(|ch| ch == 'e' || ch == 'E') {
-        let ch = p.at().unwrap();
-        result.push(ch);
+    if p.at().is_some_and(|c| c == 'e' || c == 'E') {
+        let c = p.at().unwrap();
+        result.push(c);
         p.inc();
         ty = NumberLiteral::Float;
         if p.at() == Some('-') {
@@ -337,10 +339,10 @@ fn read_atom<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
         Some('"') => read_string(p),
         Some(':') => read_keyword(p),
         Some('|') => read_barred(p, BarredTy::Symbol),
-        Some(ch) if ch == '-' && p.peek().is_some_and(|c| c.is_ascii_digit()) => read_number(p),
-        Some(ch) if ch.is_ascii_digit() => read_number(p),
-        Some(ch) if is_symbol_char(ch) => read_symbol(p),
-        Some(ch) => err!(p, UnexpectedChar(ch)),
+        Some(c) if c == '-' && p.peek().is_some_and(|c| c.is_ascii_digit()) => read_number(p),
+        Some(c) if c.is_ascii_digit() => read_number(p),
+        Some(c) if is_symbol_char(c) => read_symbol(p),
+        Some(c) => err!(p, UnexpectedChar(c)),
     }
 }
 
