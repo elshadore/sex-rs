@@ -12,9 +12,12 @@ Boolean values respresenting the formats logical true and false operations. Note
 
 ### `Numbers` (Integer/Float)
 `100`, `-1.03`, `120e+10`.
+
 Basic number like anything else. These follow the JSON format for number parsing so refer the that SPEC for the details on the way numbers work.
 
 ### `Lists`
+`(foo)`, `(foo bar baz)`, `()`.
+
 The core structure of sexpressions. They start with the character `(` and end with the character `)`. Elements in a list have be seperated with whitespace. Here are some examples:
 - `(foo bar baz)`
 - `(foo bar (bar "foo" 100 :key value))`
@@ -22,6 +25,7 @@ The core structure of sexpressions. They start with the character `(` and end wi
 
 ### `Symbols`
 `foo`, `bar`, `|foo bar`.
+
 Basic symbol parsing follows some easy rules.
 
 - The sequence cannot start with the character `:` (this is a keyword)
@@ -40,10 +44,12 @@ Advanced symbol parsing allows you to use the `|` character like you would use t
 
 ### `Keywords`
 `:foo`, `:bar`, `:|foo bar|`.
+
 Keyword are a lot like symbols. Except start with the character `:`. For this reason `:100` is a valid `Keyword`. Keywords also have `|` bar character advanced parsing as well such as `:|foo bar|`. Keywords are used of optional key value pairs in a `List`. They are better understood by demonstration rather than explaination, the declarative macro section later on will show there usecases.
 
 ### `Strings`
-`"hello"`, `"world"`, `"cool\nbeans"`
+`"hello"`, `"world"`, `"cool\nbeans"`.
+
 Strings are pretty basic like every other string implementation. Escape codes are allowed, for reference on the default escape codes also used in the `Symbol` processing.
 - `\"` the `"` literal.
 - `\\` the `\` literal.
