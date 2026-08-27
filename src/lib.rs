@@ -15,7 +15,8 @@ pub use parser::{
     parse_expression_reader, parse_expression_str, parse_exprlist_reader, parse_exprlist_str,
 };
 pub use parser_data::{
-    MalformedHexCode, Parser, Position, SexParserAtomError, SexParserError, SexParserErrorKind,
+    MalformedHexCode, MalformedUnicodeEscape, Parser, Position, SexParserAtomError, SexParserError,
+    SexParserErrorKind,
 };
 pub use sex_util::{is_symbol_char, sex_name};
 pub use view::{KeywordView, ListView};

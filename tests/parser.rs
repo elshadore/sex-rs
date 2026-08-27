@@ -1,4 +1,4 @@
-use sex::{List, Atom, Number, SexParserAtomError, SexParserError, SexParserErrorKind, parse_expression_str, parse_exprlist_str};
+use sex::{List, Atom, MalformedUnicodeEscape, Number, SexParserAtomError, SexParserError, SexParserErrorKind, parse_expression_str, parse_exprlist_str};
 
 #[test]
 fn parse_bare_symbol() {
@@ -485,7 +485,7 @@ fn parse_escape_unicode_surrogate() {
     let r = parse_exprlist_str(r#""\u{D800}""#, None);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0xD800), .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(MalformedUnicodeEscape::InvalidUnicodeCodepoint(0xD800)), .. })
     ));
 }
 
@@ -494,7 +494,7 @@ fn parse_escape_unicode_too_large() {
     let r = parse_exprlist_str(r#""\u{110000}""#, None);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0x110000), .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(MalformedUnicodeEscape::InvalidUnicodeCodepoint(0x110000)), .. })
     ));
 }
 
@@ -616,7 +616,7 @@ fn parse_barred_symbol_surrogate_shares_error() {
     let r = parse_exprlist_str("|\\u{D800}|", None);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0xD800), .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(MalformedUnicodeEscape::InvalidUnicodeCodepoint(0xD800)), .. })
     ));
 }
 
@@ -700,7 +700,7 @@ fn parse_barred_keyword_shares_hex_and_surrogate_errors() {
     let r = parse_exprlist_str(r#":|\u{D800}|"#, None);
     assert!(matches!(
         r,
-        Err(SexParserError { kind: SexParserErrorKind::InvalidUnicodeChar(0xD800), .. })
+        Err(SexParserError { kind: SexParserErrorKind::MalformedUnicodeEscape(MalformedUnicodeEscape::InvalidUnicodeCodepoint(0xD800)), .. })
     ));
 }
 
