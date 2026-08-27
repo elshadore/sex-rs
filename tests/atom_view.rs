@@ -169,7 +169,7 @@ fn keyword_then_value_pattern() {
         Atom::keyword("height"),
         Atom::Number(Number::Integer(600)),
     ];
-    let v = ListView::new_slice(&atoms);
+    let mut v = ListView::new_slice(&atoms);
     let kw = v.into_keywords().unwrap();
     assert_eq!(kw.get("width"), Some(&Atom::Number(Number::Integer(800))));
     assert_eq!(kw.get("height"), Some(&Atom::Number(Number::Integer(600))));

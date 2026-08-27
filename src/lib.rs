@@ -8,7 +8,7 @@ mod printer;
 mod view;
 
 pub use atom::{Atom, AtomTy, Number, SexError, Text, TextTy};
-pub use from_sex::FromSex;
+pub use from_sex::{FromAtom, FromSex};
 pub use into_sex::IntoSex;
 pub use list::{List, ListBuilder};
 pub use parser::{

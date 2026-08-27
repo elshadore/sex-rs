@@ -1,4 +1,4 @@
-use crate::FromSex;
+use crate::FromAtom;
 use crate::atom::{Atom, AtomTy, SexError, Text, TextTy};
 use crate::list::List;
 use std::collections::HashMap;
@@ -108,21 +108,20 @@ impl<'a> ListView<'a> {
 
     /// Returns a `KeywordView`, this essentially asserts that all remaining
     /// elements of the list are `:keyword` value pairs.
-    pub fn into_keywords(self) -> Result<KeywordView<'a>, SexError> {
+    pub fn into_keywords(&mut self) -> Result<KeywordView<'a>, SexError> {
         let mut result = KeywordView {
             map: HashMap::new(),
         };
-        let mut consume = self;
-        while let Some(atom) = consume.at() {
+        while let Some(atom) = self.at() {
             match atom {
                 Atom::Text(Text {
                     ty: TextTy::Keyword,
                     contents,
                 }) => {
                     let name: &str = contents;
-                    let value = consume.try_inc()?;
+                    let value = self.try_inc()?;
                     result.map.insert(name, value);
-                    _ = consume.inc();
+                    _ = self.inc();
                 }
                 other => {
                     return Err(SexError::TypeError {
@@ -143,7 +142,8 @@ pub struct KeywordView<'a> {
 
 impl<'a> KeywordView<'a> {
     pub fn from_slice(atoms: &'a [Atom]) -> Result<Self, SexError> {
-        ListView::new_slice(atoms).into_keywords()
+        let mut view = ListView::new_slice(atoms);
+        view.into_keywords()
     }
 
     pub fn contains_key(&self, name: &str) -> bool {
@@ -154,18 +154,18 @@ impl<'a> KeywordView<'a> {
         self.map.get(name).copied()
     }
 
-    pub fn required<T: FromSex>(&self, name: &str) -> Result<T, SexError> {
+    pub fn required<T: FromAtom>(&self, name: &str) -> Result<T, SexError> {
         match self.map.get(name) {
-            Some(atom) => T::from_sex(atom),
+            Some(atom) => T::from_atom(atom),
             None => Err(SexError::MissingField {
                 name: name.to_string(),
             }),
         }
     }
 
-    pub fn optional<T: FromSex>(&self, name: &str) -> Result<Option<T>, SexError> {
+    pub fn optional<T: FromAtom>(&self, name: &str) -> Result<Option<T>, SexError> {
         match self.map.get(name) {
-            Some(atom) => T::from_sex(atom).map(Some),
+            Some(atom) => T::from_atom(atom).map(Some),
             None => Ok(None),
         }
     }

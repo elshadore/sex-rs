@@ -1,5 +1,6 @@
 use quote::{format_ident, quote};
-use syn::{Attribute, Data, Expr, Fields, FieldsNamed, Lit, Meta};
+use std::collections::VecDeque;
+use syn::{Attribute, Data, Expr, Fields, FieldsNamed, Meta};
 
 pub fn expand_from_sex(name: &syn::Ident, data: &Data) -> proc_macro2::TokenStream {
     match data {
@@ -74,7 +75,7 @@ fn derive_struct_named(name: StructIdent, fields: &FieldsNamed) -> proc_macro2::
                 panic!("struct attribute `default`, cannot be used without a `keyword` attribute");
             }
             elements.push(quote! {
-                let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
+                let #field_name: #field_ty = sex::FromAtom::from_atom(view.try_pop()?)?;
             });
         }
 
@@ -84,16 +85,7 @@ fn derive_struct_named(name: StructIdent, fields: &FieldsNamed) -> proc_macro2::
         StructIdent::Struct(name) => {
             quote! {
                 impl sex::FromSex for #name {
-                    fn from_sex(atom: &sex::Atom) -> Result<Self, sex::SexError> {
-                        let list = match atom {
-                            sex::Atom::List(list) => list,
-                            _ => return Err(sex::SexError::TypeError {
-                                expected: sex::AtomTy::List,
-                                found: atom.clone(),
-                            }),
-                        };
-
-                        let mut view = sex::ListView::new(list);
+                    fn from_sex(view: &mut sex::ListView) -> Result<Self, sex::SexError> {
                         #(#elements)*
                         let keyword_map = view.into_keywords()?;
                         #(#keywords)*
@@ -107,7 +99,6 @@ fn derive_struct_named(name: StructIdent, fields: &FieldsNamed) -> proc_macro2::
         }
         StructIdent::Enum { name, variant } => {
             quote! {
-                let mut view = sex::ListView::new(list);
                 #(#elements)*
                 let keyword_map = view.into_keywords()?;
                 #(#keywords)*
@@ -140,30 +131,9 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
                     let field_ty = &fields.unnamed.first().unwrap().ty;
                     let field_name = format_ident!("field_0");
 
-                    let is_complex_type = matches!(field_ty, syn::Type::Path(type_path)
-                        if type_path.path.segments.len() > 1
-                        || type_path.path.segments.first().map_or(false, |seg| {
-                            let name = seg.ident.to_string();
-                            name.chars().next().map_or(false, |c| c.is_uppercase())
-                            && name.len() > 1
-                            && !matches!(name.as_str(), "String" | "Vec" | "Option" | "Box")
-                        })
-                    );
-
-                    if is_complex_type {
-                        quote! {
-                            let #field_name: #field_ty = sex::FromSex::from_sex(
-                                &sex::Atom::List(sex::List::from_slice(rest))
-                            )?;
-                            Ok(#name::#variant_name(#field_name))
-                        }
-                    } else {
-                        quote! {
-                            let mut view = sex::ListView::new_slice(rest);
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
-                            view.into_keywords()?;
-                            Ok(#name::#variant_name(#field_name))
-                        }
+                    quote! {
+                        let #field_name: #field_ty = sex::FromSex::from_sex(view)?;
+                        Ok(#name::#variant_name(#field_name))
                     }
                 } else {
                     let mut parsers = Vec::new();
@@ -172,12 +142,11 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
                         let field_ty = &field.ty;
                         let field_name = format_ident!("field_{}", i);
                         parsers.push(quote! {
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view.try_pop()?)?;
+                            let #field_name: #field_ty = sex::FromAtom::from_atom(view.try_pop()?)?;
                         });
                         inits.push(quote! { #field_name });
                     }
                     quote! {
-                        let mut view = sex::ListView::new_slice(rest);
                         #(#parsers)*
                         view.into_keywords()?;
                         Ok(#name::#variant_name(#(#inits),*))
@@ -205,31 +174,15 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenSt
 
     quote! {
         impl sex::FromSex for #name {
-            fn from_sex(atom: &sex::Atom) -> Result<Self, sex::SexError> {
-                let list = match atom {
-                    sex::Atom::List(list) => list,
-                    _ => return Err(sex::SexError::TypeError {
-                        expected: sex::AtomTy::List,
-                        found: atom.clone(),
-                    }),
-                };
-
-                if list.is_empty() {
-                    return Err(sex::SexError::TypeError {
-                        expected: sex::AtomTy::List,
-                        found: sex::Atom::List(sex::List::from(vec![])),
-                    });
-                }
-
-                let tag = match &list[0] {
+            fn from_sex(view: &mut sex::ListView) -> Result<Self, sex::SexError> {
+                let tag_atom = view.try_pop()?;
+                let tag = match tag_atom {
                     sex::Atom::Text(t) if t.ty == sex::TextTy::Symbol => t.contents.as_str(),
                     _ => return Err(sex::SexError::TypeError {
                         expected: sex::AtomTy::Symbol,
-                        found: list[0].clone(),
+                        found: tag_atom.clone(),
                     }),
                 };
-
-                let rest = &list[1..];
 
                 match tag {
                     #(#variant_arms)*
@@ -271,8 +224,12 @@ fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
         .filter(|attrib| attrib.path().is_ident("sex"))
     {
         if let Meta::List(meta) = &attribute.meta {
-            let mut iter = meta.tokens.clone().into_iter();
-            if let Some(proc_macro2::TokenTree::Ident(ident)) = iter.next() {
+            let mut iter: VecDeque<_> = meta.tokens.clone().into_iter().collect();
+            while let Some(token) = iter.pop_front() {
+                let ident = match token {
+                    proc_macro2::TokenTree::Ident(ident) => ident,
+                    _ => continue,
+                };
                 let power_word = ident.to_string();
                 match power_word.as_str() {
                     "keyword" => {
@@ -280,9 +237,10 @@ fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
                             panic!("keyword attribute already defined");
                         }
                         if maybe_punct(&mut iter, '=') {
-                            match iter.next() {
+                            match iter.pop_front() {
                                 Some(proc_macro2::TokenTree::Literal(lit)) => {
-                                    result.keyword = Some(SexKeyword::Custom(lit.to_string()));
+                                    let s = lit.to_string();
+                                    result.keyword = Some(SexKeyword::Custom(s.trim_matches('"').to_string()));
                                 }
                                 Some(proc_macro2::TokenTree::Ident(ident)) => {
                                     result.keyword = Some(SexKeyword::Custom(ident.to_string()));
@@ -300,7 +258,7 @@ fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
                             panic!("default attribute already defined");
                         }
                         if maybe_punct(&mut iter, '=') {
-                            match iter.next() {
+                            match iter.pop_front() {
                                 Some(proc_macro2::TokenTree::Ident(ident)) => {
                                     let expr = syn::parse2(quote! { #ident }).unwrap();
                                     result.default = Some(SexDefault::Custom(expr));
@@ -318,13 +276,14 @@ fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
                         }
                     }
                     "tag" => {
-                        if let Some(tag) = result.tag {
-                            panic!("tag attribute already defined: {tag}");
+                        if result.tag.is_some() {
+                            panic!("tag attribute already defined");
                         }
                         expect_punct(&mut iter, '=');
-                        match iter.next() {
+                        match iter.pop_front() {
                             Some(proc_macro2::TokenTree::Literal(lit)) => {
-                                result.tag = Some(lit.to_string());
+                                let s = lit.to_string();
+                                result.tag = Some(s.trim_matches('"').to_string());
                             }
                             Some(proc_macro2::TokenTree::Ident(ident)) => {
                                 result.tag = Some(ident.to_string());
@@ -345,8 +304,8 @@ fn parse_sex_attributes(attributes: &[Attribute]) -> SexAttributes {
     result
 }
 
-fn expect_punct(iter: &mut impl Iterator<Item = proc_macro2::TokenTree>, expect: char) {
-    if let Some(proc_macro2::TokenTree::Punct(punct)) = iter.next() {
+fn expect_punct(iter: &mut VecDeque<proc_macro2::TokenTree>, expect: char) {
+    if let Some(proc_macro2::TokenTree::Punct(punct)) = iter.pop_front() {
         let found = punct.as_char();
         if found != expect {
             panic!("expected: '{expect}', found: '{found}'");
@@ -356,14 +315,12 @@ fn expect_punct(iter: &mut impl Iterator<Item = proc_macro2::TokenTree>, expect:
     }
 }
 
-fn maybe_punct(iter: &mut impl Iterator<Item = proc_macro2::TokenTree>, maybe: char) -> bool {
-    if let Some(proc_macro2::TokenTree::Punct(punct)) = iter.next() {
-        let found = punct.as_char();
-        if found != maybe {
-            panic!("expected: '{maybe}', found: '{found}'");
+fn maybe_punct(iter: &mut VecDeque<proc_macro2::TokenTree>, maybe: char) -> bool {
+    match iter.front() {
+        Some(proc_macro2::TokenTree::Punct(punct)) if punct.as_char() == maybe => {
+            iter.pop_front();
+            true
         }
-        true
-    } else {
-        false
+        _ => false,
     }
 }
