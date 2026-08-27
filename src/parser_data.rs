@@ -269,13 +269,13 @@ impl std::fmt::Display for SexParserError {
                     write!(f, "zero has a trailing digit: '{c}'")
                 }
                 MalformedNumber::NoDigits => {
-                    write!(f, "no digits in `whole` part of number")
+                    write!(f, "no digits in `whole` part of the number")
                 }
                 MalformedNumber::NoDecimalDigits => {
-                    write!(f, "no digits in `decimal` part of number")
+                    write!(f, "no digits in `decimal` part of the number")
                 }
                 MalformedNumber::NoExponentDigits => {
-                    write!(f, "no digits in `exponent` part of number")
+                    write!(f, "no digits in `exponent` part of the number")
                 }
                 MalformedNumber::NumberTooBigForPrecision => {
                     write!(f, "number too big for 64bit (integer/float) parsing")

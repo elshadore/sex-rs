@@ -1,4 +1,4 @@
-use sex::{List, Atom, MalformedUnicodeEscape, Number, SexParserAtomError, SexParserError, SexParserErrorKind, parse_expression_str, parse_exprlist_str};
+use sex::{List, Atom, MalformedNumber, MalformedUnicodeEscape, Number, SexParserAtomError, SexParserError, SexParserErrorKind, parse_expression_str, parse_exprlist_str};
 
 #[test]
 fn parse_bare_symbol() {
@@ -211,7 +211,7 @@ fn parse_trailing_dot_is_invalid() {
     let err = parse_expression_str("42.", None).unwrap_err();
     assert!(matches!(
         err,
-        SexParserAtomError::Generic(SexParserError { kind: SexParserErrorKind::InvalidNumber, .. })
+        SexParserAtomError::Generic(SexParserError { kind: SexParserErrorKind::MalformedNumber(MalformedNumber::NoDecimalDigits), .. })
     ));
 }
 
@@ -291,8 +291,8 @@ fn parse_exponent_malformed() {
     for input in ["1e", "1e+", "1e-", "1.e5", "42."] {
         let err = parse_expression_str(input, None).unwrap_err();
         assert!(
-            matches!(err, SexParserAtomError::Generic(SexParserError { kind: SexParserErrorKind::InvalidNumber, .. })),
-            "expected InvalidNumber for {input}, got {err:?}"
+            matches!(err, SexParserAtomError::Generic(SexParserError { kind: SexParserErrorKind::MalformedNumber(..), .. })),
+            "expected MalformedNumber for {input}, got {err:?}"
         );
     }
 }
@@ -301,11 +301,11 @@ fn parse_exponent_malformed() {
 fn parse_integer_overflow_is_invalid_number() {
     let err = parse_expression_str("99999999999999999999", None).unwrap_err();
     match err {
-        SexParserAtomError::Generic(SexParserError { kind: SexParserErrorKind::InvalidNumber, pos, .. }) => {
+        SexParserAtomError::Generic(SexParserError { kind: SexParserErrorKind::MalformedNumber(MalformedNumber::NumberTooBigForPrecision), pos, .. }) => {
             assert_eq!(pos.line, 1);
             assert_eq!(pos.col, 1);
         }
-        other => panic!("expected InvalidNumber, got {other:?}"),
+        other => panic!("expected MalformedNumber::NumberTooBigForPrecision, got {other:?}"),
     }
 }
 

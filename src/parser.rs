@@ -274,7 +274,8 @@ fn read_number_literal<R: BufRead>(
     match p.at() {
         Some('0') => {
             result.push('0');
-            if let Some(c) = p.inc().filter(|c| c.is_ascii_digit()) {
+            p.inc();
+            if let Some(c) = p.at().filter(|c| c.is_ascii_digit()) {
                 return err_number!(p, ZeroHasTrailingDigit(c));
             }
         }
