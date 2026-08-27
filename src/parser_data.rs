@@ -23,6 +23,16 @@ macro_rules! err_unicode {
     };
 }
 
+#[macro_export]
+macro_rules! err_number {
+    ($p:expr, $kind:ident) => {
+        Err($p.error($p.pos, SexParserErrorKind::MalformedNumber(MalformedNumber::$kind)))
+    };
+    ($p:expr, $kind:ident($($arg:tt)*)) => {
+        Err($p.error($p.pos, SexParserErrorKind::MalformedNumber(MalformedNumber::$kind($($arg)*))))
+    };
+}
+
 fn read_char(reader: &mut impl BufRead) -> Option<char> {
     loop {
         let buf = reader.fill_buf().ok()?;
@@ -161,6 +171,15 @@ pub enum MalformedUnicodeEscape {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MalformedNumber {
+    ZeroHasTrailingDigit(char),
+    NoDigits,
+    NoDecimalDigits,
+    NoExponentDigits,
+    NumberTooBigForPrecision,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SexParserErrorKind {
     UnexpectedEof,
     UnexpectedChar(char),
@@ -172,7 +191,7 @@ pub enum SexParserErrorKind {
     MalformedBarEscape(char),
     MalformedHexEscape(MalformedHexCode),
     MalformedUnicodeEscape(MalformedUnicodeEscape),
-    InvalidNumber,
+    MalformedNumber(MalformedNumber),
     EmptyKeyword,
     ExpectedWhitespace(char),
 }
@@ -245,9 +264,23 @@ impl std::fmt::Display for SexParserError {
                     )
                 }
             },
-            SexParserErrorKind::InvalidNumber => {
-                write!(f, "invalid number")
-            }
+            SexParserErrorKind::MalformedNumber(err) => match err {
+                MalformedNumber::ZeroHasTrailingDigit(c) => {
+                    write!(f, "zero has a trailing digit: '{c}'")
+                }
+                MalformedNumber::NoDigits => {
+                    write!(f, "no digits in `whole` part of number")
+                }
+                MalformedNumber::NoDecimalDigits => {
+                    write!(f, "no digits in `decimal` part of number")
+                }
+                MalformedNumber::NoExponentDigits => {
+                    write!(f, "no digits in `exponent` part of number")
+                }
+                MalformedNumber::NumberTooBigForPrecision => {
+                    write!(f, "number too big for 64bit (integer/float) parsing")
+                }
+            },
             SexParserErrorKind::EmptyKeyword => write!(f, "empty keyword"),
             SexParserErrorKind::ExpectedWhitespace(c) => {
                 write!(f, "expected whitespace before '{}'", c)

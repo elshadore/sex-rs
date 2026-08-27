@@ -1,8 +1,8 @@
 use crate::atom::{Atom, Number, Text, TextTy};
-use crate::is_symbol_char;
 use crate::list::{List, ListBuilder};
 use crate::parser_data::*;
 use crate::{err, err_unicode};
+use crate::{err_number, is_symbol_char};
 use std::io::{BufRead, BufReader, Cursor, Read};
 
 fn skip_whitespace<R: BufRead>(p: &mut Parser<R>) -> bool {
@@ -274,16 +274,15 @@ fn read_number_literal<R: BufRead>(
     match p.at() {
         Some('0') => {
             result.push('0');
-            p.inc();
-            if p.at().is_some_and(|ch| ch.is_ascii_digit()) {
-                return err!(p, InvalidNumber);
+            if let Some(c) = p.inc().filter(|c| c.is_ascii_digit()) {
+                return err_number!(p, ZeroHasTrailingDigit(c));
             }
         }
         Some(c) if c.is_ascii_digit() => {
             _ = take_digits(p, &mut result);
         }
         _ => {
-            return err!(p, InvalidNumber);
+            return err_number!(p, NoDigits);
         }
     }
 
@@ -292,7 +291,7 @@ fn read_number_literal<R: BufRead>(
         p.inc();
         ty = NumberLiteral::Float;
         if !take_digits(p, &mut result) {
-            return err!(p, InvalidNumber);
+            return err_number!(p, NoDecimalDigits);
         }
     }
 
@@ -309,7 +308,7 @@ fn read_number_literal<R: BufRead>(
             p.inc();
         }
         if !take_digits(p, &mut result) {
-            return err!(p, InvalidNumber);
+            return err_number!(p, NoExponentDigits);
         }
     }
 
@@ -319,15 +318,17 @@ fn read_number_literal<R: BufRead>(
 fn read_number<R: BufRead>(p: &mut Parser<R>) -> Result<Atom, SexParserError> {
     let start = p.pos;
     let (ty, s) = read_number_literal(p)?;
+    const ERROR: SexParserErrorKind =
+        SexParserErrorKind::MalformedNumber(MalformedNumber::NumberTooBigForPrecision);
     let number = match ty {
         NumberLiteral::Float => s
             .parse::<f64>()
             .map(Number::Float)
-            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber)),
+            .map_err(|_| p.error(start, ERROR)),
         NumberLiteral::Integer => s
             .parse::<i64>()
             .map(Number::Integer)
-            .map_err(|_| p.error(start, SexParserErrorKind::InvalidNumber)),
+            .map_err(|_| p.error(start, ERROR)),
     };
     number.map(Atom::Number)
 }
