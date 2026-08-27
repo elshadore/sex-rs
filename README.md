@@ -1,6 +1,10 @@
 # 🍆 Sex: An S-Expression Parser
 Sex is an sexpression data format designed to be a JSON of sexpression data. This is format is primarily designed to be used between different programming languages and applications. Another great usecase for Sex can be as a declarive scripting language for application configs, as generic sexpression data is perfect for custom declarive languages.
 
+## Example
+```rust
+```
+
 ## The Library
 The Sex library comes with a bunch of tools for working with the format.
 
@@ -19,10 +23,6 @@ The Sex library comes with a bunch of tools for working with the format.
 - Declarive Macros (like serde)
 
     Using the `#[derive(FromSex)]` and `#[derive(IntoSex)]` forms to automate the construction of the `FromSex` and `IntoSex` traits to create declarative serialization and deserialization.
-
-## Example
-```rust
-```
 
 ## Format Desciption
 Below is a desciption of the formats data types.
@@ -108,13 +108,6 @@ Strings are pretty basic like every other string implementation. Escape codes ar
 
 <!-- ```rust -->
 <!-- // Simple Struct Example. -->
-<!-- #[derive(Sex)] -->
-<!-- struct Point { -->
-<!--     #[sex(keyword, default = 0)] -->
-<!--     x: i64, -->
-<!--     #[sex(keyword, default = 0)] -->
-<!--     y: i64, -->
-<!-- } -->
 
 <!-- fn example1() { -->
 <!--     let point_atom: Atom = parse_atom("(10 -5)").unwrap(); -->
@@ -127,23 +120,6 @@ Strings are pretty basic like every other string implementation. Escape codes ar
 <!-- // This creates a tagged expression. -->
 <!-- // This also shows the use of the keyword tag and the default values that can be assigned. -->
 <!-- #[derive(Sex)] -->
-<!-- enum Shape { -->
-<!--     #[sex(tag = "circle")] -->
-<!--     Circle(i32), -->
-
-<!--     #[sex(tag = "point")] -->
-<!--     Point(Point), -->
-
-<!--     #[sex(tag = "rect")] -->
-<!--     Rect { -->
-<!--         width: i64, -->
-<!--         height: i64, -->
-<!--         #[sex(keyword, default = 0)] -->
-<!--         x: i64, -->
-<!--         #[sex(keyword, default = 0)] -->
-<!--         y: i64, -->
-<!--     } -->
-<!-- } -->
 
 <!-- fn example2() { -->
 <!--     let circle_atom: Atom = parse_atom("(circle 5)").unwrap(); -->

@@ -141,6 +141,14 @@ impl Atom {
         })
     }
 
+    pub fn integer(i: i64) -> Self {
+        Self::Number(Number::Integer(i))
+    }
+    
+    pub fn float(f: f64) -> Self {
+        Self::Number(Number::Float(f))
+    }
+
     pub fn is_nil(&self) -> bool {
         matches!(self, Atom::Nil)
     }
