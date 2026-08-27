@@ -117,11 +117,11 @@ fn derive_struct_named(name: StructIdent, fields: &FieldsNamed) -> proc_macro2::
     }
 }
 
-fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::TokenStream {
+fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> proc_macro2::TokenStream {
     let mut variant_arms = Vec::new();
     let mut variant_names = Vec::new();
 
-    for variant in &data_enum.variants {
+    for variant in &denum.variants {
         let variant_name = &variant.ident;
         let attribs = parse_sex_attributes(&variant.attrs);
         if attribs.default.is_some() || attribs.keyword.is_some() {
@@ -202,8 +202,6 @@ fn derive_enum(name: &syn::Ident, data_enum: &syn::DataEnum) -> proc_macro2::Tok
             #tag => { #arm_body }
         });
     }
-
-    let _expected_variants = format!("{:?}", variant_names);
 
     quote! {
         impl sex::FromSex for #name {
