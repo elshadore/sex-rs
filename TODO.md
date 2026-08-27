@@ -3,10 +3,6 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [x] Better Errors
-  - [x] Macros
-  - [x] Unicode / Parser
-  - [x] Number
 - [ ] Documentation
   - [ ] Example `example/example.rs`
       - Use this add the base for the example in the README
@@ -17,6 +13,7 @@ Both symbols and strings have to be valid unicode characters.
   - Ensure good coverage.
   - Remove useless tests.
 - [ ] Quality Check
+- [ ] Number `FromSex` can panic the program if too big for the size. Rethink this.
 - [ ] Pretty Printing
   - [ ] Method on `IntoSex`
 
