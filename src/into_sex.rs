@@ -16,11 +16,6 @@ pub trait IntoSex {
         builder.push(Self::into_atom(self));
     }
 
-    #[deprecated = "use `into_atom` instead"]
-    fn into_sex(&self) -> Atom {
-        self.into_atom()
-    }
-
     fn sex_print(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         print_atom(f, &self.into_atom())
     }

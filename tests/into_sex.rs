@@ -99,8 +99,3 @@ fn into_atom_list() {
     );
 }
 
-#[test]
-#[allow(deprecated)]
-fn into_sex_deprecated_alias() {
-    assert_eq!(42i64.into_sex(), Atom::Number(Number::Integer(42)));
-}
