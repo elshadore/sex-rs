@@ -86,7 +86,7 @@ fn derive_struct_named(
                 ));
             }
             elements.push(quote! {
-                let #field_name: #field_ty = sex::FromSex::from_list(view)?;
+                let #field_name: #field_ty = sex::FromSex::from_atom(view.try_pop()?)?;
             });
         }
 

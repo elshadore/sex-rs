@@ -25,6 +25,13 @@ struct OptionalFields {
 }
 
 #[derive(Debug, PartialEq, FromSex, IntoSex)]
+struct Outer {
+    a: i64,
+    p: Point,
+    c: i64,
+}
+
+#[derive(Debug, PartialEq, FromSex, IntoSex)]
 enum Shape {
     #[sex(tag = "circle")]
     Circle(i64),
@@ -63,7 +70,7 @@ enum Command {
 #[test]
 fn struct_positional() {
     let p = Point { x: 10, y: 20 };
-    assert_eq!(p.into_sex().to_string(), "(10 20)");
+    assert_eq!(p.into_atom().to_string(), "(10 20)");
 }
 
 #[test]
@@ -73,7 +80,7 @@ fn struct_keyword() {
         width: 800,
         height: 100,
     };
-    assert_eq!(c.into_sex().to_string(), "(\"test\" :width 800 :height 100)");
+    assert_eq!(c.into_atom().to_string(), "(\"test\" :width 800 :height 100)");
 }
 
 #[test]
@@ -83,7 +90,7 @@ fn struct_keyword_default_still_serialized() {
         width: 800,
         height: 200,
     };
-    assert_eq!(c.into_sex().to_string(), "(\"test\" :width 800 :height 200)");
+    assert_eq!(c.into_atom().to_string(), "(\"test\" :width 800 :height 200)");
 }
 
 #[test]
@@ -92,7 +99,7 @@ fn struct_optional_keyword_none() {
         name: "hello".into(),
         label: None,
     };
-    assert_eq!(o.into_sex().to_string(), "(\"hello\" :label nil)");
+    assert_eq!(o.into_atom().to_string(), "(\"hello\" :label nil)");
 }
 
 #[test]
@@ -101,19 +108,19 @@ fn struct_optional_keyword_some() {
         name: "hello".into(),
         label: Some("world".into()),
     };
-    assert_eq!(o.into_sex().to_string(), "(\"hello\" :label \"world\")");
+    assert_eq!(o.into_atom().to_string(), "(\"hello\" :label \"world\")");
 }
 
 #[test]
 fn enum_tuple_single() {
     let s = Shape::Circle(5);
-    assert_eq!(s.into_sex().to_string(), "(circle 5)");
+    assert_eq!(s.into_atom().to_string(), "(circle 5)");
 }
 
 #[test]
 fn enum_tuple_complex() {
     let s = Shape::Pt(Point { x: 1, y: 2 });
-    assert_eq!(s.into_sex().to_string(), "(point (1 2))");
+    assert_eq!(s.into_atom().to_string(), "(point 1 2)");
 }
 
 #[test]
@@ -124,33 +131,43 @@ fn enum_named() {
         x: 10,
         y: 20,
     };
-    assert_eq!(s.into_sex().to_string(), "(rect 100 200 :x 10 :y 20)");
+    assert_eq!(s.into_atom().to_string(), "(rect 100 200 :x 10 :y 20)");
 }
 
 #[test]
 fn enum_unit() {
     let c = Command::Noop;
-    assert_eq!(c.into_sex().to_string(), "(noop)");
+    assert_eq!(c.into_atom().to_string(), "(noop)");
 }
 
 #[test]
 fn enum_named_keyword_out_of_order_atoms() {
     let c = Command::Move { dx: 1, dy: 2 };
-    let atom = c.into_sex();
+    let atom = c.into_atom();
     assert_eq!(atom.to_string(), "(move :dx 1 :dy 2)");
 }
 
 #[test]
 fn enum_tuple_multiple() {
     let c = Command::Jump(3, 4);
-    assert_eq!(c.into_sex().to_string(), "(jump 3 4)");
+    assert_eq!(c.into_atom().to_string(), "(jump 3 4)");
+}
+
+#[test]
+fn struct_nested_field() {
+    let o = Outer {
+        a: 1,
+        p: Point { x: 2, y: 3 },
+        c: 4,
+    };
+    assert_eq!(o.into_atom().to_string(), "(1 (2 3) 4)");
 }
 
 fn roundtrip<T: FromSex + IntoSex + PartialEq + Debug>(value: T, input: &str) {
     let atom = parse_expression_str(input, None).unwrap();
     let parsed: T = T::from_atom(&atom).unwrap();
     assert_eq!(parsed, value);
-    assert_eq!(parsed.into_sex().to_string(), input);
+    assert_eq!(parsed.into_atom().to_string(), input);
 }
 
 #[test]
@@ -195,13 +212,30 @@ fn roundtrip_enum_unit() {
 }
 
 #[test]
-fn into_sex_atom_values() {
+fn roundtrip_enum_tuple_payload() {
+    roundtrip(Shape::Pt(Point { x: 1, y: 2 }), "(point 1 2)");
+}
+
+#[test]
+fn roundtrip_struct_nested() {
+    roundtrip(
+        Outer {
+            a: 1,
+            p: Point { x: 2, y: 3 },
+            c: 4,
+        },
+        "(1 (2 3) 4)",
+    );
+}
+
+#[test]
+fn into_atom_values() {
     let c = Config {
         name: "test".into(),
         width: 800,
         height: 100,
     };
-    let atom = c.into_sex();
+    let atom = c.into_atom();
     let list = atom.as_list().unwrap();
     assert_eq!(list.get(0), Some(&Atom::string("test")));
     assert_eq!(list.get(2), Some(&Atom::Number(Number::Integer(800))));

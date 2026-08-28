@@ -8,6 +8,7 @@ Both symbols and strings have to be valid unicode characters.
   - Ensure good coverage.
   - Remove useless tests.
 - [ ] Quality Check
+  Full read through.
 - [ ] Pretty Printing
   - [ ] Method on `IntoSex`
 

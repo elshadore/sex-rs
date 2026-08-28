@@ -28,11 +28,9 @@ fn derive_struct(name: &syn::Ident, fields: &Fields) -> syn::Result<proc_macro2:
             let (elems, keywords) = named_field_list(fields, Accessor::SelfAccess)?;
             Ok(quote! {
                 impl sex::IntoSex for #name {
-                    fn into_sex(&self) -> sex::Atom {
-                        sex::Atom::List(sex::List::from(vec![
-                            #(#elems)*
-                            #(#keywords)*
-                        ]))
+                    fn into_list(&self, builder: &mut sex::ListBuilder) {
+                        #(#elems)*
+                        #(#keywords)*
                     }
                 }
             })
@@ -66,24 +64,22 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_mac
             Fields::Unit => {
                 quote! {
                     #name::#variant_name => {
-                        sex::Atom::List(sex::List::from(vec![sex::Atom::symbol(#tag_lit)]))
+                        builder.push(sex::Atom::symbol(#tag_lit));
                     }
                 }
             }
             Fields::Unnamed(fields) => {
-                let mut values = Vec::new();
                 let mut names = Vec::new();
+                let mut splices = Vec::new();
                 for (i, _) in fields.unnamed.iter().enumerate() {
                     let field_name = format_ident!("field_{}", i);
                     names.push(field_name.clone());
-                    values.push(quote! { #field_name.into_sex() });
+                    splices.push(quote! { #field_name.into_list(builder); });
                 }
                 quote! {
                     #name::#variant_name(#(#names),*) => {
-                        sex::Atom::List(sex::List::from(vec![
-                            sex::Atom::symbol(#tag_lit),
-                            #(#values),*
-                        ]))
+                        builder.push(sex::Atom::symbol(#tag_lit));
+                        #(#splices)*
                     }
                 }
             }
@@ -92,11 +88,9 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_mac
                 let destructure = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
                 quote! {
                     #name::#variant_name { #(#destructure),* } => {
-                        sex::Atom::List(sex::List::from(vec![
-                            sex::Atom::symbol(#tag_lit),
-                            #(#elems)*
-                            #(#keywords)*
-                        ]))
+                        builder.push(sex::Atom::symbol(#tag_lit));
+                        #(#elems)*
+                        #(#keywords)*
                     }
                 }
             }
@@ -106,7 +100,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_mac
 
     Ok(quote! {
         impl sex::IntoSex for #name {
-            fn into_sex(&self) -> sex::Atom {
+            fn into_list(&self, builder: &mut sex::ListBuilder) {
                 match self {
                     #(#arms)*
                 }
@@ -141,7 +135,8 @@ fn named_field_list(
             let keyword_name = keyword_name(field_name, keyword);
             let keyword_lit = syn::LitStr::new(&keyword_name, proc_macro2::Span::call_site());
             keywords.push(quote! {
-                sex::Atom::keyword(#keyword_lit), #value.into_sex(),
+                builder.push(sex::Atom::keyword(#keyword_lit));
+                builder.push(#value.into_atom());
             });
         } else {
             if attribs.default.is_some() {
@@ -150,7 +145,7 @@ fn named_field_list(
                     "struct attribute `default`, cannot be used without a `keyword` attribute",
                 ));
             }
-            elems.push(quote! { #value.into_sex(), });
+            elems.push(quote! { builder.push(#value.into_atom()); });
         }
     }
 
