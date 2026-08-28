@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use sex::{Atom, FromSex, IntoSex, ListView, Number, parse_expression_str};
+use sex::{Atom, FromSex, IntoSex, Number, parse_expression_str};
 
 #[derive(Debug, PartialEq, FromSex, IntoSex)]
 struct Point {
@@ -148,8 +148,7 @@ fn enum_tuple_multiple() {
 
 fn roundtrip<T: FromSex + IntoSex + PartialEq + Debug>(value: T, input: &str) {
     let atom = parse_expression_str(input, None).unwrap();
-    let mut view = ListView::new(atom.as_list().unwrap());
-    let parsed: T = T::from_sex(&mut view).unwrap();
+    let parsed: T = T::from_atom(&atom).unwrap();
     assert_eq!(parsed, value);
     assert_eq!(parsed.into_sex().to_string(), input);
 }

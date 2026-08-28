@@ -1,4 +1,4 @@
-use sex::{List, Atom, AtomTy, FromAtom, FromSex, ListView, Number, SexError};
+use sex::{List, Atom, AtomTy, FromSex, ListView, Number, SexError};
 
 fn view_from(atoms: &[Atom]) -> ListView<'_> {
     ListView::new_slice(atoms)
@@ -158,14 +158,14 @@ fn from_sex_unit_err_on_text() {
 #[test]
 fn from_sex_option_none() {
     let mut view = view_from(&[Atom::Nil]);
-    let r: Option<i64> = FromSex::from_sex(&mut view).unwrap();
+    let r: Option<i64> = FromSex::from_list(&mut view).unwrap();
     assert_eq!(r, None);
 }
 
 #[test]
 fn from_sex_option_some() {
     let mut view = view_from(&[Atom::Number(Number::Integer(99))]);
-    let r: Option<i64> = FromSex::from_sex(&mut view).unwrap();
+    let r: Option<i64> = FromSex::from_list(&mut view).unwrap();
     assert_eq!(r, Some(99));
 }
 
@@ -205,4 +205,23 @@ fn from_sex_vec_type_error_inside() {
     let list = Atom::List(List::from(vec![Atom::Number(Number::Integer(1)), Atom::symbol("bad")]));
     let r: Result<Vec<i64>, _> = Vec::from_atom(&list);
     assert!(r.is_err());
+}
+
+
+#[test]
+fn from_sex_user_error_from_str() {
+    let err = SexError::user("position must be positive");
+    assert_eq!(err.to_string(), "position must be positive");
+}
+
+#[test]
+fn from_sex_user_error_source() {
+    use std::error::Error;
+
+    let err = SexError::user("custom cause");
+    assert!(err.source().is_some());
+    assert_eq!(err.source().unwrap().to_string(), "custom cause");
+
+    let err: SexError = SexError::ExpectedAtom;
+    assert!(err.source().is_none());
 }

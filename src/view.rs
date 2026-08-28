@@ -156,10 +156,7 @@ impl<'a> KeywordView<'a> {
 
     pub fn required<T: FromSex>(&self, name: &str) -> Result<T, SexError> {
         match self.map.get(name) {
-            Some(atom) => {
-                let mut view = ListView::new_slice(std::slice::from_ref(atom));
-                T::from_sex(&mut view)
-            }
+            Some(atom) => T::from_atom(atom),
             None => Err(SexError::MissingField {
                 name: name.to_string(),
             }),
@@ -168,10 +165,7 @@ impl<'a> KeywordView<'a> {
 
     pub fn optional<T: FromSex>(&self, name: &str) -> Result<Option<T>, SexError> {
         match self.map.get(name) {
-            Some(atom) => {
-                let mut view = ListView::new_slice(std::slice::from_ref(atom));
-                T::from_sex(&mut view).map(Some)
-            }
+            Some(atom) => T::from_atom(atom).map(Some),
             None => Ok(None),
         }
     }

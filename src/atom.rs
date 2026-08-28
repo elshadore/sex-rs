@@ -34,6 +34,8 @@ impl fmt::Display for AtomTy {
     }
 }
 
+type UserError = dyn std::error::Error + Send + Sync;
+
 #[derive(Debug)]
 pub enum SexError {
     TypeError {
@@ -53,6 +55,13 @@ pub enum SexError {
     },
     ExpectedAtom,
     ExpectedFinished,
+    User(Box<UserError>),
+}
+
+impl SexError {
+    pub fn user(err: impl Into<Box<UserError>>) -> Self {
+        SexError::User(err.into())
+    }
 }
 
 impl fmt::Display for SexError {
@@ -80,11 +89,19 @@ impl fmt::Display for SexError {
             SexError::ExpectedFinished => {
                 write!(f, "expected end of input, but more atoms remain")
             }
+            SexError::User(err) => write!(f, "{}", err),
         }
     }
 }
 
-impl std::error::Error for SexError {}
+impl std::error::Error for SexError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            SexError::User(err) => Some(err.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Number {

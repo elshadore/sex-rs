@@ -1,24 +1,22 @@
 use super::{Atom, AtomTy, Number, SexError};
 use super::view::ListView;
 
-pub trait FromAtom: Sized {
-    fn from_atom(atom: &Atom) -> Result<Self, SexError>;
-}
-
 pub trait FromSex: Sized {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError>;
-}
-
-impl<T: FromAtom> FromSex for T {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
+    fn from_list(view: &mut ListView) -> Result<Self, SexError> {
         Self::from_atom(view.try_pop()?)
+    }
+
+    fn from_atom(atom: &Atom) -> Result<Self, SexError> {
+        let list = atom.try_as_list()?;
+        let mut view = ListView::new(list);
+        Self::from_list(&mut view)
     }
 }
 
-macro_rules! impl_from_atom_int {
+macro_rules! impl_from_sex_int {
     ($($t:ty),* $(,)?) => {
         $(
-            impl FromAtom for $t {
+            impl FromSex for $t {
                 fn from_atom(atom: &Atom) -> Result<Self, SexError> {
                     match atom {
                         Atom::Number(Number::Integer(n)) => {
@@ -38,9 +36,9 @@ macro_rules! impl_from_atom_int {
     };
 }
 
-impl_from_atom_int!(i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
+impl_from_sex_int!(i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
 
-impl FromAtom for String {
+impl FromSex for String {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::Text(t) => Ok(t.contents.clone()),
@@ -52,7 +50,7 @@ impl FromAtom for String {
     }
 }
 
-impl FromAtom for f64 {
+impl FromSex for f64 {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::Number(Number::Float(n)) => Ok(*n),
@@ -65,7 +63,7 @@ impl FromAtom for f64 {
     }
 }
 
-impl FromAtom for f32 {
+impl FromSex for f32 {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::Number(Number::Float(n)) => {
@@ -87,7 +85,7 @@ impl FromAtom for f32 {
     }
 }
 
-impl FromAtom for bool {
+impl FromSex for bool {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::True => Ok(true),
@@ -101,7 +99,7 @@ impl FromAtom for bool {
     }
 }
 
-impl FromAtom for () {
+impl FromSex for () {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::Nil => Ok(()),
@@ -114,25 +112,22 @@ impl FromAtom for () {
 }
 
 impl<T: FromSex> FromSex for Option<T> {
-    fn from_sex(view: &mut ListView) -> Result<Self, SexError> {
-        match view.at() {
-            Some(Atom::Nil) => {
-                view.skip();
-                Ok(None)
-            }
-            _ => Ok(Some(T::from_sex(view)?)),
+    fn from_atom(atom: &Atom) -> Result<Self, SexError> {
+        match atom {
+            Atom::Nil => Ok(None),
+            _ => Ok(Some(T::from_atom(atom)?)),
         }
     }
 }
 
-impl<T: FromSex> FromAtom for Vec<T> {
+impl<T: FromSex> FromSex for Vec<T> {
     fn from_atom(atom: &Atom) -> Result<Self, SexError> {
         match atom {
             Atom::List(list) => {
                 let mut view = ListView::new(list);
                 let mut result = Vec::new();
                 while !view.is_finished() {
-                    result.push(T::from_sex(&mut view)?);
+                    result.push(T::from_atom(view.try_pop()?)?);
                 }
                 Ok(result)
             }

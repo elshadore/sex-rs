@@ -86,7 +86,7 @@ fn derive_struct_named(
                 ));
             }
             elements.push(quote! {
-                let #field_name: #field_ty = sex::FromSex::from_sex(view)?;
+                let #field_name: #field_ty = sex::FromSex::from_list(view)?;
             });
         }
 
@@ -96,7 +96,7 @@ fn derive_struct_named(
         StructIdent::Struct(name) => {
             Ok(quote! {
                 impl sex::FromSex for #name {
-                    fn from_sex(view: &mut sex::ListView) -> Result<Self, sex::SexError> {
+                    fn from_list(view: &mut sex::ListView) -> Result<Self, sex::SexError> {
                         #(#elements)*
                         let keyword_map = view.into_keywords()?;
                         #(#keywords)*
@@ -146,7 +146,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_mac
                     let field_name = format_ident!("field_0");
 
                     quote! {
-                        let #field_name: #field_ty = sex::FromSex::from_sex(view)?;
+                        let #field_name: #field_ty = sex::FromSex::from_list(view)?;
                         Ok(#name::#variant_name(#field_name))
                     }
                 } else {
@@ -156,7 +156,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_mac
                         let field_ty = &field.ty;
                         let field_name = format_ident!("field_{}", i);
                         parsers.push(quote! {
-                            let #field_name: #field_ty = sex::FromSex::from_sex(view)?;
+                            let #field_name: #field_ty = sex::FromSex::from_list(view)?;
                         });
                         inits.push(quote! { #field_name });
                     }
@@ -188,7 +188,7 @@ fn derive_enum(name: &syn::Ident, denum: &syn::DataEnum) -> syn::Result<proc_mac
 
     Ok(quote! {
         impl sex::FromSex for #name {
-            fn from_sex(view: &mut sex::ListView) -> Result<Self, sex::SexError> {
+            fn from_list(view: &mut sex::ListView) -> Result<Self, sex::SexError> {
                 let tag_atom = view.try_pop()?;
                 let tag = match tag_atom {
                     sex::Atom::Text(t) if t.ty == sex::TextTy::Symbol => t.contents.as_str(),
