@@ -1,4 +1,4 @@
-use crate::printer;
+use crate::{IntoSex, printer};
 use std::fmt;
 
 use crate::list::List;
@@ -167,7 +167,6 @@ impl Atom {
         })
     }
 
-    /// Create a string literal atom.
     pub fn string(s: impl Into<String>) -> Self {
         Atom::Text(Text {
             ty: TextTy::String,
@@ -175,12 +174,28 @@ impl Atom {
         })
     }
 
-    pub fn integer(i: i64) -> Self {
+    pub const fn integer(i: i64) -> Self {
         Self::Number(Number::Integer(i))
     }
 
-    pub fn float(f: f64) -> Self {
+    pub const fn float(f: f64) -> Self {
         Self::Number(Number::Float(f))
+    }
+
+    pub const fn true_atom() -> Self {
+        Self::True
+    }
+
+    pub const fn false_atom() -> Self {
+        Self::False
+    }
+
+    pub const fn nil() -> Self {
+        Self::Nil
+    }
+
+    pub fn list(into: impl Into<List>) -> Self {
+        Self::List(into.into())
     }
 
     pub fn is_nil(&self) -> bool {

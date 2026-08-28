@@ -3,9 +3,6 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Test check.
-  - Ensure good coverage.
-  - Remove useless tests.
 - [ ] Quality Check
   Full read through.
 - [ ] Pretty Printing

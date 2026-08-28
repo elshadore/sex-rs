@@ -25,7 +25,7 @@ impl List {
             vec: slice.to_vec(),
         }
     }
-    
+
     pub fn iter(&self) -> impl Iterator<Item = &Atom> {
         self.vec.iter()
     }
@@ -74,9 +74,21 @@ impl FromIterator<Atom> for List {
     }
 }
 
+impl From<&[Atom]> for List {
+    fn from(value: &[Atom]) -> Self {
+        List::from_slice(value)
+    }
+}
+
 impl From<Vec<Atom>> for List {
     fn from(vec: Vec<Atom>) -> Self {
         List { vec }
+    }
+}
+
+impl From<ListBuilder> for List {
+    fn from(value: ListBuilder) -> Self {
+        value.build()
     }
 }
 
@@ -111,6 +123,20 @@ impl ListBuilder {
 
     pub fn build(self) -> List {
         List { vec: self.vec }
+    }
+}
+
+impl From<List> for ListBuilder {
+    fn from(value: List) -> Self {
+        ListBuilder { vec: value.vec }
+    }
+}
+
+impl From<&[Atom]> for ListBuilder {
+    fn from(value: &[Atom]) -> Self {
+        ListBuilder {
+            vec: Vec::from(value),
+        }
     }
 }
 
