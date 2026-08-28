@@ -3,12 +3,7 @@ Sex is aiming to be a generic lisp data format. As a result we want to make it c
 
 Both symbols and strings have to be valid unicode characters.
 
-- [ ] Documentation
-  - [ ] Example `example/example.rs`
-      - Use this add the base for the example in the README
-      - [ ] Check Macro output in example (Macroexpand)
-  - [ ] README
-  - [ ] SPEC
+- [ ] Check Macro output in example (Macroexpand)
 - [ ] Test check.
   - Ensure good coverage.
   - Remove useless tests.
