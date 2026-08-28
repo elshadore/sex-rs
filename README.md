@@ -108,6 +108,21 @@ The Sex library comes with a bunch of tools for working with the format.
 - Declarive Macros (like serde)
 
     Using the `#[derive(FromSex)]` and `#[derive(IntoSex)]` forms to automate the construction of the `FromSex` and `IntoSex` traits to create declarative serialization and deserialization.
+    
+## Declarive Macro Attributes
+Both the following `FromSex` and `IntoSex` macros have the following attributes.
+
+- `#[sex(tag = "tag-name")]`
+
+    This allows the user to rename an enum tag.
+  
+- `#[sex(keyword)]` || `#[sex(keyword = "keyword-name")]`
+
+    This attribute can be attached to a struct member to specify it for `Keyword` parsing. An optional rename of the tag can be used.
+    
+- `#[sex(default)]` || `#[sex(default = value)]`
+
+    This attribute can only be used on identifiers with the `#[sex(keyword)]` attribute attached. By default the keyword attribute *requires* the keyword to exist in the Sex data provided, default enables an optional value if the member is unavailable. By default this uses the `Default::default()` trait, an optional additional value to the attribute can be specified to be used as the default value instead.
 
 ## Format Desciption
 Below is a desciption of the format's data types and the their parsing rules.
