@@ -3,6 +3,91 @@ Sex is an sexpression data format designed to be a JSON of sexpression data. Thi
 
 ## Example
 ```rust
+#[derive(Debug, FromSex, IntoSex)]
+struct Point {
+    #[sex(keyword = "x")]
+    point_x: i64,
+    #[sex(keyword = "y")]
+    point_y: i64,
+}
+
+#[derive(Debug, FromSex, IntoSex)]
+enum Shape {
+    #[sex(tag = "circle")]
+    Circle(i32),
+
+    #[sex(tag = "point")]
+    Point(Point),
+
+    #[sex(tag = "rect")]
+    Rect {
+        width: i64,
+        height: i64,
+        #[sex(keyword, default)]
+        x: i64,
+        #[sex(keyword, default = 0)]
+        y: i64,
+    }
+}
+
+/// Declarative derive example
+fn example1() {
+    let shape_atom: Atom = parse_expression_str("(rect 200 100 :y 10)", None).unwrap();
+    let shape: Shape = Shape::from_atom(&shape_atom).unwrap();
+    println!("{shape:?}")
+}
+
+/// `Sex` data example.
+fn example2() {
+    let data: List = list![Atom::symbol("+"), Atom::integer(1), Atom::integer(2)];
+    println!("{data}");
+    
+}
+
+/// `ListBuilder` example
+fn example3() {
+    let mut builder = ListBuilder::new();
+    builder.push(Atom::symbol("foo"));
+    builder.push(Atom::symbol("bar"));
+    builder.push(Atom::symbol("baz"));
+    let data = builder.build();
+    println!("{data}");
+}
+
+/// `ListView` and `KeywordView` example
+fn example4() {
+    let atoms: Atom = parse_expression_str("(foo (bar 1 2 3) baz :foo 10 :bar 40)", None).unwrap();
+    let mut view = ListView::new(atoms.try_as_list().unwrap());
+    let foo = view.pop().unwrap();
+    let mut view2 = view.enter_list().unwrap();
+    {
+        let bar = view2.pop().unwrap();
+        let at1 = view2.pop().unwrap();
+        let at2 = view2.pop().unwrap();
+        let at3 = view2.pop().unwrap();
+        view2.expect_finished().unwrap();
+        println!("{bar}, {at1}, {at2}, {at3}");
+    }
+    let baz = view.pop().unwrap();
+    let kw = view.into_keywords().unwrap();
+    let kw_foo = kw.get("foo").unwrap();
+    let kw_bar = kw.get("bar").unwrap();
+    println!("{foo}, {baz}, foo: {kw_foo}, bar: {kw_bar}");
+}
+
+/// Read from file.
+fn example5() {
+    let name = String::from("examples/example.sex");
+    let file = std::fs::File::open(&name).unwrap();
+    match sex::parse_exprlist_reader(file, Some(name)) {
+        Ok(atom) => {
+            println!("{atom}");
+        }
+        Err(err) => {
+            eprintln!("{err}");
+        }
+    }
+}
 ```
 
 ## The Library
@@ -82,64 +167,3 @@ Strings are pretty basic like every other string implementation. Escape codes ar
 - `\0` null character.
 - `\xFF` a hex escape, featuring two custom hex characters. As strings are all valid Unicode, this essentially is read as extended ascii and is converted into whatever unicode format that is being used, so this does not refer to the actual character byte being used.
 - `\u{FFFFFF}` a unicode escape, this features up to six custom hex codes are refers to a valid Unicode codepoint character. Example `\u{03BB}` => `λ`.
-
-
-<!-- Sex is a parser for transforming generic lisp data (s-expressions) into rust data. Sex has four main modes of use. -->
-
-<!-- - Basic Lisp Data Reading -->
-<!--     Using the `Atom` type enum to procedurally inspect the data parsed. -->
-<!-- - Iterative Views (`AtomView`, `KeywordView`) -->
-<!--     For easier iteration and extraction of data (particulary `:kewords`) -->
-<!-- - A `FromSex` Trait -->
-<!--     This can be attached to types for typed declarative parsing. -->
-<!-- - A Declarative Macro (Like Serde) -->
-<!--     This auto implements the `FromSex` trait. -->
-  
-<!-- Because of the wide variety of lisps and the nature of the rust data it is mapping to, Sex makes the following choices for maximum compatibility. -->
-
-<!-- - `;` Is used for comments. This will comment out the rest of the line. -->
-<!-- - `true` are used for rust `true`. `t`, `#t` will fail. -->
-<!-- - (`false` && `nil`) are used for rust `false`. `f`, `#f` will fail. -->
-<!-- - `nil` is used for rust `None`. -->
-<!-- - `:keyword` is use for keywords, `#:keyword` and `keyword:` will fail to parse. -->
-<!-- - `|` braces: `|foo bar|`, are used for strictly creating a symbol (it can contain any character). -->
-
-<!-- ## Derive Macro Example -->
-
-<!-- ```rust -->
-<!-- // Simple Struct Example. -->
-
-<!-- fn example1() { -->
-<!--     let point_atom: Atom = parse_atom("(10 -5)").unwrap(); -->
-<!--     let point = Point::from_sex(&point_atom).unwrap(); -->
-<!--     assert_eq!(point.x, 10); -->
-<!--     assert_eq!(point.y, -5); -->
-<!-- } -->
-
-<!-- // Enum Example. -->
-<!-- // This creates a tagged expression. -->
-<!-- // This also shows the use of the keyword tag and the default values that can be assigned. -->
-<!-- #[derive(Sex)] -->
-
-<!-- fn example2() { -->
-<!--     let circle_atom: Atom = parse_atom("(circle 5)").unwrap(); -->
-    
-<!--     let shape: Shape = Shape::from_sex(&circle_atom).unwrap(); -->
-<!--     match shape { -->
-<!--         Shape::Circle(radius) => assert_eq!(radius, 5), -->
-<!--         _ => panic!("expected circle"), -->
-<!--     } -->
-
-<!--     let rect_atom: Atom = parse_atom("(rect 100 200 :y 20)").unwrap(); -->
-<!--     let shape: Shape = Shape::from_sex(&rect_atom).unwrap(); -->
-<!--     match shape { -->
-<!--         Shape::Rect { width, height, x, y } => { -->
-<!--             assert_eq!(width, 100); -->
-<!--             assert_eq!(height, 200); -->
-<!--             assert_eq!(x, 0); -->
-<!--             assert_eq!(y, 20); -->
-<!--         } -->
-<!--         _ => panic!("expected rect"), -->
-<!--     } -->
-<!-- } -->
-<!-- ``` -->

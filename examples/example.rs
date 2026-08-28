@@ -72,7 +72,7 @@ fn example4() {
     println!("{foo}, {baz}, foo: {kw_foo}, bar: {kw_bar}");
 }
 
-/// Read from file example using the `parse*` functions.
+/// Read from file.
 fn example5() {
     let name = String::from("examples/example.sex");
     let file = std::fs::File::open(&name).unwrap();
