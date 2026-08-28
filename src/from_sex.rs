@@ -20,8 +20,8 @@ macro_rules! impl_from_sex_int {
                 fn from_atom(atom: &Atom) -> Result<Self, SexError> {
                     match atom {
                         Atom::Number(Number::Integer(n)) => {
-                            <$t>::try_from(*n).map_err(|_| SexError::Overflow {
-                                expected: AtomTy::Integer,
+                            <$t>::try_from(*n).map_err(|_| SexError::IntegerOverflow {
+                                expected_size: std::mem::size_of::<$t>() * 8,
                                 value: n.to_string(),
                             })
                         }
@@ -68,8 +68,8 @@ impl FromSex for f32 {
         match atom {
             Atom::Number(Number::Float(n)) => {
                 if (*n).is_nan() || (*n).abs() > f32::MAX as f64 {
-                    Err(SexError::Overflow {
-                        expected: AtomTy::Float,
+                    Err(SexError::FloatOverflow {
+                        expected_size: std::mem::size_of::<f32>() * 8,
                         value: n.to_string(),
                     })
                 } else {

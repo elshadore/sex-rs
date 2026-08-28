@@ -75,13 +75,13 @@ fn from_sex_i8_range() {
 #[test]
 fn from_sex_int_overflow() {
     let err = u8::from_atom(&Atom::Number(Number::Integer(256))).unwrap_err();
-    assert!(matches!(err, SexError::Overflow { expected: AtomTy::Integer, .. }));
+    assert!(matches!(err, SexError::IntegerOverflow { .. }));
 }
 
 #[test]
 fn from_sex_int_underflow() {
     let err = u32::from_atom(&Atom::Number(Number::Integer(-1))).unwrap_err();
-    assert!(matches!(err, SexError::Overflow { expected: AtomTy::Integer, .. }));
+    assert!(matches!(err, SexError::IntegerOverflow { .. }));
 }
 
 
@@ -113,7 +113,7 @@ fn from_sex_float_err_on_text() {
 #[test]
 fn from_sex_f32_overflow() {
     let err = f32::from_atom(&Atom::Number(Number::Float(1e39))).unwrap_err();
-    assert!(matches!(err, SexError::Overflow { expected: AtomTy::Float, .. }));
+    assert!(matches!(err, SexError::FloatOverflow { .. }));
 }
 
 
