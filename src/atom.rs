@@ -49,8 +49,12 @@ pub enum SexError {
         variant: String,
         expected: Vec<String>,
     },
-    Overflow {
-        expected: AtomTy,
+    IntegerOverflow {
+        expected_size: usize,
+        value: String,
+    },
+    FloatOverflow {
+        expected_size: usize,
         value: String,
     },
     ExpectedAtom,
@@ -78,11 +82,24 @@ impl fmt::Display for SexError {
                     variant, expected
                 )
             }
-            SexError::Overflow { expected, value } => {
+            SexError::IntegerOverflow {
+                expected_size,
+                value,
+            } => {
                 write!(
                     f,
-                    "overflow: value '{}' does not fit in {}",
-                    value, expected
+                    "integer overflow: value '{}' does not fit in integer size: {}",
+                    value, expected_size
+                )
+            }
+            SexError::FloatOverflow {
+                expected_size,
+                value,
+            } => {
+                write!(
+                    f,
+                    "float overflow: value '{}' does not fit in float size: {}",
+                    value, expected_size
                 )
             }
             SexError::ExpectedAtom => write!(f, "expected atom, reached end of input"),
@@ -161,7 +178,7 @@ impl Atom {
     pub fn integer(i: i64) -> Self {
         Self::Number(Number::Integer(i))
     }
-    
+
     pub fn float(f: f64) -> Self {
         Self::Number(Number::Float(f))
     }
